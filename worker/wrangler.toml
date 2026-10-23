@@ -1,0 +1,12 @@
+name = "game-organizer-igdb"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# 30 searches per minute per IP; the app debounces typing, so normal use stays far below this.
+[[ratelimits]]
+name = "SEARCH_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60

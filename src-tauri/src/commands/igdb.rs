@@ -11,6 +11,8 @@ use tokio::sync::Mutex;
 const TOKEN_URL: &str = "https://id.twitch.tv/oauth2/token";
 const GAMES_URL: &str = "https://api.igdb.com/v4/games";
 const CREDENTIALS_FILE: &str = "igdb.json";
+/// Public search proxy (see worker/). It holds the Twitch secret server-side, so this URL is safe to commit.
+const BUNDLED_PROXY_URL: &str = "https://game-organizer-igdb.contato-jgleiva.workers.dev";
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Credentials {
@@ -37,7 +39,7 @@ pub struct IgdbStatus {
     client_id_hint: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameResult {
     igdb_id: i64,
@@ -121,8 +123,39 @@ pub fn igdb_status(app: AppHandle) -> IgdbStatus {
             source: Some(source),
             client_id_hint: Some(hint(&c.client_id)),
         },
-        None => IgdbStatus { configured: false, source: None, client_id_hint: None },
+        None => IgdbStatus {
+            configured: proxy_url().is_some(),
+            source: proxy_url().map(|_| "proxy"),
+            client_id_hint: None,
+        },
     }
+}
+
+fn proxy_url() -> Option<String> {
+    std::env::var("IGDB_PROXY_URL")
+        .ok()
+        .filter(|u| !u.is_empty())
+        .or_else(|| (!BUNDLED_PROXY_URL.is_empty()).then(|| BUNDLED_PROXY_URL.to_string()))
+}
+
+#[derive(Deserialize)]
+struct ProxyError {
+    error: String,
+}
+
+async fn search_via_proxy(client: &reqwest::Client, base: &str, query: &str) -> Result<Vec<GameResult>, String> {
+    let res = client
+        .post(format!("{}/search", base.trim_end_matches('/')))
+        .json(&serde_json::json!({ "query": query }))
+        .send()
+        .await
+        .map_err(|e| format!("Falha de rede ao buscar jogos: {e}"))?;
+    if !res.status().is_success() {
+        let status = res.status().as_u16();
+        let message = res.json::<ProxyError>().await.map(|e| e.error).unwrap_or_default();
+        return Err(if message.is_empty() { format!("O servidor de busca respondeu com erro HTTP {status}.") } else { message });
+    }
+    res.json().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -229,8 +262,10 @@ pub async fn search_games(
     if query.len() < 2 {
         return Ok(vec![]);
     }
-    let (creds, _) = load_credentials(&app)
-        .ok_or("Configure as chaves do IGDB em Configurações para buscar jogos.")?;
+    let Some((creds, _)) = load_credentials(&app) else {
+        let base = proxy_url().ok_or("Configure as chaves do IGDB em Configurações para buscar jogos.")?;
+        return search_via_proxy(&state.client, &base, &query).await;
+    };
 
     let access_token = {
         let mut guard = state.token.lock().await;
