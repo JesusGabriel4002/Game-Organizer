@@ -95,7 +95,7 @@ A busca funciona sem configurar nada. O app consulta um servidor intermediário 
 
 O app escolhe a fonte nesta ordem:
 
-1. Chaves próprias salvas em **Configurações** (opcional, para quem quiser usar a própria cota).
+1. Chaves próprias salvas no arquivo `igdb.json` da pasta de configuração do app (a tela para cadastrá-las está desativada por enquanto).
 2. Variáveis de ambiente `IGDB_CLIENT_ID` e `IGDB_CLIENT_SECRET` (útil em desenvolvimento, veja `.env.example`).
 3. O servidor padrão, definido em `BUNDLED_PROXY_URL` em [`src-tauri/src/commands/igdb.rs`](src-tauri/src/commands/igdb.rs). Pode ser trocado em tempo de execução com a variável `IGDB_PROXY_URL`.
 
