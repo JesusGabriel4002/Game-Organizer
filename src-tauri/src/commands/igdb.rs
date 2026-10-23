@@ -277,7 +277,11 @@ pub async fn search_games(
     let body = format!("search \"{query}\"; fields {FIELDS}; limit 40;");
     let mut raw = query_igdb(&state, &creds, body).await?;
     // Stable sort keeps IGDB's relevance order within each tier.
-    raw.sort_by_key(|g| (rank(g), (g.total_rating_count.unwrap_or(0) < 5) as u8));
+    let lower = query.to_lowercase();
+    raw.sort_by_key(|g| {
+        let exact = g.name.as_deref().is_some_and(|n| n.to_lowercase() == lower);
+        (!exact, rank(g), (g.total_rating_count.unwrap_or(0) < 5) as u8)
+    });
     Ok(raw.into_iter().filter_map(to_result).take(20).collect())
 }
 
@@ -306,6 +310,8 @@ pub struct GameDetails {
     igdb_rating: Option<f64>,
     /// Seconds.
     time_to_beat: Option<i64>,
+    /// Lower-cased keywords, genres, themes, game modes and perspectives.
+    tags: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -313,6 +319,25 @@ struct RawRatings {
     id: i64,
     aggregated_rating: Option<f64>,
     total_rating: Option<f64>,
+    keywords: Option<Vec<Named>>,
+    genres: Option<Vec<Named>>,
+    themes: Option<Vec<Named>>,
+    game_modes: Option<Vec<Named>>,
+    player_perspectives: Option<Vec<Named>>,
+}
+
+impl RawRatings {
+    fn tags(&self) -> Vec<String> {
+        let mut tags: Vec<String> = [&self.keywords, &self.genres, &self.themes, &self.game_modes, &self.player_perspectives]
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter_map(|n| n.name.as_ref().map(|s| s.to_lowercase()))
+            .collect();
+        tags.sort();
+        tags.dedup();
+        tags
+    }
 }
 
 #[derive(Deserialize)]
@@ -346,7 +371,10 @@ pub async fn game_details(app: AppHandle, state: State<'_, IgdbState>, ids: Vec<
         &state,
         &creds,
         GAMES_URL,
-        format!("fields aggregated_rating,total_rating; where id = ({list}); limit {MAX_DETAIL_IDS};"),
+        format!(
+            "fields aggregated_rating,total_rating,keywords.name,genres.name,themes.name,game_modes.name,player_perspectives.name; \
+             where id = ({list}); limit {MAX_DETAIL_IDS};"
+        ),
     )
     .await?;
     let times: Vec<RawTimeToBeat> = query_igdb_at(
@@ -368,6 +396,7 @@ pub async fn game_details(app: AppHandle, state: State<'_, IgdbState>, ids: Vec<
                     .iter()
                     .find(|t| t.game_id == id)
                     .and_then(|t| t.normally.or(t.hastily).or(t.completely)),
+                tags: r.map(RawRatings::tags).unwrap_or_default(),
             }
         })
         .collect())

@@ -85,6 +85,7 @@ export interface IgdbDetails {
   criticRating: number | null;
   igdbRating: number | null;
   timeToBeat: number | null;
+  tags: string[];
 }
 
 export interface IgdbStatus {

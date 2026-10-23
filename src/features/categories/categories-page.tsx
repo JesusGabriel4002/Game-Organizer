@@ -1,9 +1,14 @@
 import { ask } from "@tauri-apps/plugin-dialog";
-import { Check, ChevronRight, Palette, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, ChevronRight, Palette, Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { CATEGORY_RULES } from "@/lib/auto-categories";
 import { TAG_COLORS, TAG_COLOR_KEYS, randomTagColor } from "@/lib/constants";
+import { getSetting, setSetting } from "@/lib/db";
 import {
+  AUTO_CATEGORIES_SETTING,
+  useApplyAutoCategories,
   useCategories,
   useCreateCategory,
   useDeleteCategory,
@@ -89,6 +94,47 @@ function useAutoCategorize() {
   };
 }
 
+function AutoCategoriesSection() {
+  const qc = useQueryClient();
+  const setting = useQuery({ queryKey: ["setting", AUTO_CATEGORIES_SETTING], queryFn: () => getSetting(AUTO_CATEGORIES_SETTING) });
+  const apply = useApplyAutoCategories();
+  const enabled = setting.data !== "off";
+
+  const toggle = async () => {
+    await setSetting(AUTO_CATEGORIES_SETTING, enabled ? "off" : "on");
+    qc.invalidateQueries({ queryKey: ["setting", AUTO_CATEGORIES_SETTING] });
+  };
+
+  const applyAll = async () => {
+    const added = await apply.mutateAsync();
+    toast.info(added ? `${added} ${added === 1 ? "categoria adicionada" : "categorias adicionadas"} aos jogos.` : "Nada novo para categorizar.");
+  };
+
+  return (
+    <div className="mb-6 rounded-lg border border-border p-4">
+      <h2 className="flex items-center gap-2 font-semibold">
+        <Wand2 className="size-4" /> Categorias automáticas
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Usa as palavras-chave e gêneros do IGDB para colocar cada jogo em categorias como{" "}
+        {CATEGORY_RULES.slice(0, 8)
+          .map((r) => r.name)
+          .join(", ")}{" "}
+        e mais {CATEGORY_RULES.length - 8}. Só adiciona: o que você tirar de um jogo não volta, e categorias excluídas não são recriadas.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input type="checkbox" checked={enabled} onChange={toggle} className="size-4 accent-[#2383e2]" />
+          Categorizar jogos novos automaticamente
+        </label>
+        <Button size="sm" variant="outline" onClick={applyAll} disabled={apply.isPending}>
+          <Sparkles /> Aplicar na biblioteca toda
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CategoriesPage() {
   const { data: categories = [] } = useCategories();
   const { data: library = [] } = useLibrary();
@@ -108,6 +154,8 @@ export function CategoriesPage() {
   return (
     <PageContainer>
       <PageHeader icon="🏷️" title="Categorias" description="Agrupe seus jogos do seu jeito: indies, favoritos, co-op, o que quiser." />
+
+      <AutoCategoriesSection />
 
       <form
         className="mb-4 flex gap-2"
