@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { IgdbGame, IgdbStatus } from "./types";
+import type { IgdbDetails, IgdbGame, IgdbStatus } from "./types";
 
 export const igdb = {
   status: () => invoke<IgdbStatus>("igdb_status"),
@@ -8,6 +8,7 @@ export const igdb = {
   clearCredentials: () => invoke<void>("igdb_clear_credentials"),
   search: (query: string) => invoke<IgdbGame[]>("search_games", { query }),
   popular: () => invoke<IgdbGame[]>("popular_games"),
+  details: (ids: number[]) => invoke<IgdbDetails[]>("game_details", { ids }),
 };
 
 export const files = {

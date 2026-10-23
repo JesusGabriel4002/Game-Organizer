@@ -12,6 +12,11 @@ export interface LibraryEntry {
   genres: string[];
   gamePlatforms: string[];
   summary: string | null;
+  /** 0-100 from IGDB: press reviews, and the overall score as a fallback. */
+  criticRating: number | null;
+  igdbRating: number | null;
+  /** Average seconds to finish the main story, per IGDB. */
+  timeToBeat: number | null;
   status: GameStatus;
   platform: string | null;
   rating: number | null;
@@ -73,6 +78,13 @@ export interface IgdbGame {
   genres: string[];
   platforms: string[];
   summary: string | null;
+}
+
+export interface IgdbDetails {
+  igdbId: number;
+  criticRating: number | null;
+  igdbRating: number | null;
+  timeToBeat: number | null;
 }
 
 export interface IgdbStatus {

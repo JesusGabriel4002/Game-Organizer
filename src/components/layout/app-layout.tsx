@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
+import { useIgdbSync } from "@/lib/queries";
 import { useUi, usePalette } from "@/lib/store";
 import { Sidebar } from "./sidebar";
 import { Toaster } from "./toaster";
@@ -36,6 +37,7 @@ function usePaletteShortcut() {
 export function AppLayout() {
   useThemeClass();
   usePaletteShortcut();
+  useIgdbSync();
   return (
     <div className="flex h-full overflow-hidden">
       <Sidebar />

@@ -1,4 +1,6 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { igdb } from "./api";
 import * as db from "./db";
 import type { CompletionInput, EntryPatch, GameStatus, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
 import { toast } from "./toast";
@@ -19,6 +21,35 @@ export const keys = {
 
 export function useLibrary() {
   return useQuery({ queryKey: keys.library, queryFn: db.listLibrary });
+}
+
+const SYNC_BATCH = 50;
+const SYNC_RETRY_MS = 5 * 60_000;
+
+/** Fills in IGDB ratings and time to beat for library games in the background. */
+export function useIgdbSync() {
+  const qc = useQueryClient();
+  const { data: library } = useLibrary();
+  const running = useRef(false);
+  const failedAt = useRef(0);
+
+  useEffect(() => {
+    if (!library || running.current || Date.now() - failedAt.current < SYNC_RETRY_MS) return;
+    running.current = true;
+    (async () => {
+      try {
+        const ids = await db.listGamesToSync();
+        for (let i = 0; i < ids.length; i += SYNC_BATCH) {
+          await db.saveGameDetails(await igdb.details(ids.slice(i, i + SYNC_BATCH)));
+        }
+        if (ids.length) await qc.invalidateQueries({ queryKey: keys.library });
+      } catch {
+        failedAt.current = Date.now();
+      } finally {
+        running.current = false;
+      }
+    })();
+  }, [library, qc]);
 }
 
 export function useEntry(id: string | undefined) {
