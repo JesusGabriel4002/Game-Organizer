@@ -72,6 +72,10 @@ struct Cover {
 struct RawGame {
     id: i64,
     name: Option<String>,
+    game_type: Option<i64>,
+    category: Option<i64>,
+    version_parent: Option<i64>,
+    total_rating_count: Option<i64>,
     first_release_date: Option<i64>,
     cover: Option<Cover>,
     genres: Option<Vec<Named>>,
@@ -283,8 +287,9 @@ pub async fn search_games(
 
     let body = format!(
         "search \"{query}\"; \
-         fields name,first_release_date,summary,cover.image_id,genres.name,themes.name,platforms.name,platforms.abbreviation; \
-         limit 20;"
+         fields name,first_release_date,summary,cover.image_id,genres.name,themes.name,platforms.name,platforms.abbreviation,\
+         game_type,category,version_parent,total_rating_count; \
+         limit 40;"
     );
     let res = state
         .client
@@ -304,6 +309,18 @@ pub async fn search_games(
     if !res.status().is_success() {
         return Err(format!("O IGDB respondeu com erro HTTP {}.", res.status().as_u16()));
     }
-    let raw: Vec<RawGame> = res.json().await.map_err(|e| e.to_string())?;
-    Ok(raw.into_iter().filter_map(to_result).collect())
+    let mut raw: Vec<RawGame> = res.json().await.map_err(|e| e.to_string())?;
+    // Stable sort keeps IGDB's relevance order within each tier.
+    raw.sort_by_key(|g| (rank(g), (g.total_rating_count.unwrap_or(0) < 5) as u8));
+    Ok(raw.into_iter().filter_map(to_result).take(20).collect())
+}
+
+/// Same tiers as the worker: main games/remakes first, DLC/bundles next, ports/forks/mods last.
+fn rank(g: &RawGame) -> u8 {
+    let tier = match g.game_type.or(g.category).unwrap_or(0) {
+        0 | 4 | 8 | 9 | 10 => 0,
+        11 | 12 | 5 | 14 => 2,
+        _ => 1,
+    };
+    tier + g.version_parent.is_some() as u8
 }

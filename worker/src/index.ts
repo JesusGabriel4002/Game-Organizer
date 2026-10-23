@@ -23,6 +23,10 @@ interface Named {
 interface RawGame {
   id: number;
   name?: string;
+  game_type?: number;
+  category?: number;
+  version_parent?: number;
+  total_rating_count?: number;
   first_release_date?: number;
   summary?: string;
   cover?: { image_id?: string };
@@ -68,9 +72,32 @@ function queryIgdb(env: Env, query: string, token: string) {
     },
     body:
       `search "${query}"; ` +
-      "fields name,first_release_date,summary,cover.image_id,genres.name,themes.name,platforms.name,platforms.abbreviation; " +
-      "limit 20;",
+      "fields name,first_release_date,summary,cover.image_id,genres.name,themes.name,platforms.name,platforms.abbreviation," +
+      "game_type,category,version_parent,total_rating_count; " +
+      "limit 40;",
   });
+}
+
+// IGDB game types: 0 main, 8 remake, 9 remaster, 10 expanded, 4 standalone expansion rank first;
+// DLC/bundles next; ports, forks, mods and updates last.
+const TYPE_RANK: Record<number, number> = { 0: 0, 8: 0, 9: 0, 10: 0, 4: 0, 1: 1, 2: 1, 3: 1, 6: 1, 7: 1, 13: 1, 11: 2, 12: 2, 5: 2, 14: 2 };
+
+function rank(raw: RawGame) {
+  const type = raw.game_type ?? raw.category ?? 0;
+  return (TYPE_RANK[type] ?? 1) + (raw.version_parent ? 1 : 0);
+}
+
+/** Keeps IGDB's relevance order inside each tier, but lifts main games and popular titles to the top. */
+function sortResults(games: RawGame[]) {
+  return games
+    .map((g, index) => ({ g, index }))
+    .sort((a, b) => {
+      const tier = rank(a.g) - rank(b.g);
+      if (tier !== 0) return tier;
+      const popular = Number((b.g.total_rating_count ?? 0) >= 5) - Number((a.g.total_rating_count ?? 0) >= 5);
+      return popular !== 0 ? popular : a.index - b.index;
+    })
+    .map(({ g }) => g);
 }
 
 function normalize(raw: RawGame) {
@@ -114,7 +141,7 @@ export default {
     if (query.length < 2) return json([]);
 
     const cache = (caches as unknown as { default: Cache }).default;
-    const cacheKey = new Request(`https://igdb-cache.internal/search?q=${encodeURIComponent(query.toLowerCase())}`);
+    const cacheKey = new Request(`https://igdb-cache.internal/v2/search?q=${encodeURIComponent(query.toLowerCase())}`);
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
 
@@ -122,7 +149,10 @@ export default {
       let res = await queryIgdb(env, query, await getToken(env));
       if (res.status === 401) res = await queryIgdb(env, query, await getToken(env, true));
       if (!res.ok) return json({ error: `O IGDB respondeu com erro HTTP ${res.status}.` }, 502);
-      const results = ((await res.json()) as RawGame[]).map(normalize).filter(Boolean);
+      const results = sortResults((await res.json()) as RawGame[])
+        .map(normalize)
+        .filter(Boolean)
+        .slice(0, 20);
       const response = json(results, 200, { "Cache-Control": "public, max-age=86400" });
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
