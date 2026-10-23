@@ -27,6 +27,12 @@ fn migrations() -> Vec<Migration> {
             sql: normalized(include_str!("../migrations/002_completed_year.sql")),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "igdb_details",
+            sql: normalized(include_str!("../migrations/003_igdb_details.sql")),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -47,6 +53,7 @@ pub fn run() {
             commands::igdb::igdb_clear_credentials,
             commands::igdb::search_games,
             commands::igdb::popular_games,
+            commands::igdb::game_details,
             commands::files::write_text_file,
             commands::files::read_text_file,
         ])

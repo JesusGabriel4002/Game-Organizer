@@ -35,8 +35,23 @@ interface RawGame {
   platforms?: Named[];
 }
 
+interface RawDetails {
+  id: number;
+  aggregated_rating?: number;
+  total_rating?: number;
+}
+
+interface RawTimeToBeat {
+  game_id: number;
+  hastily?: number;
+  normally?: number;
+  completely?: number;
+}
+
 const TOKEN_URL = "https://id.twitch.tv/oauth2/token";
-const GAMES_URL = "https://api.igdb.com/v4/games";
+const IGDB_URL = "https://api.igdb.com/v4";
+const GAMES_URL = `${IGDB_URL}/games`;
+const MAX_DETAIL_IDS = 50;
 
 // Lives as long as the isolate does; a cold start just fetches a new token.
 let cachedToken: { value: string; expiresAt: number } | null = null;
@@ -68,8 +83,8 @@ const FIELDS =
 // Main games, remakes and remasters with the most ratings. Keep in sync with POPULAR_FILTER in igdb.rs.
 const POPULAR_QUERY = `${FIELDS} where game_type = (0,8,9) & version_parent = null & total_rating_count > 500; sort total_rating_count desc; limit 30;`;
 
-function queryIgdb(env: Env, body: string, token: string) {
-  return fetch(GAMES_URL, {
+function queryIgdb(env: Env, body: string, token: string, url = GAMES_URL) {
+  return fetch(url, {
     method: "POST",
     headers: {
       "Client-ID": env.IGDB_CLIENT_ID,
@@ -78,6 +93,48 @@ function queryIgdb(env: Env, body: string, token: string) {
     },
     body,
   });
+}
+
+async function queryWithRetry<T>(env: Env, body: string, url = GAMES_URL): Promise<T> {
+  let res = await queryIgdb(env, body, await getToken(env), url);
+  if (res.status === 401) res = await queryIgdb(env, body, await getToken(env, true), url);
+  if (!res.ok) throw new Error(`O IGDB respondeu com erro HTTP ${res.status}.`);
+  return (await res.json()) as T;
+}
+
+/** Ratings and time to beat for games already in someone's library. */
+async function details(env: Env, ctx: Ctx, ids: number[]) {
+  const cache = (caches as unknown as { default: Cache }).default;
+  const cacheKey = new Request(`https://igdb-cache.internal/v1/details?ids=${ids.join(",")}`);
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+
+  try {
+    const list = ids.join(",");
+    const [games, times] = await Promise.all([
+      queryWithRetry<RawDetails[]>(env, `fields aggregated_rating,total_rating; where id = (${list}); limit ${MAX_DETAIL_IDS};`),
+      queryWithRetry<RawTimeToBeat[]>(
+        env,
+        `fields game_id,hastily,normally,completely; where game_id = (${list}); limit ${MAX_DETAIL_IDS};`,
+        `${IGDB_URL}/game_time_to_beats`,
+      ),
+    ]);
+    const timeById = new Map(times.map((t) => [t.game_id, t.normally ?? t.hastily ?? t.completely ?? null]));
+    const results = ids.map((id) => {
+      const g = games.find((x) => x.id === id);
+      return {
+        igdbId: id,
+        criticRating: g?.aggregated_rating ?? null,
+        igdbRating: g?.total_rating ?? null,
+        timeToBeat: timeById.get(id) ?? null,
+      };
+    });
+    const response = json(results, 200, { "Cache-Control": "public, max-age=86400" });
+    ctx.waitUntil(cache.put(cacheKey, response.clone()));
+    return response;
+  } catch (err) {
+    return json({ error: `Falha ao consultar o IGDB: ${(err as Error).message}` }, 502);
+  }
 }
 
 /** Runs an IGDB query through the edge cache, retrying once with a fresh token. */
@@ -145,7 +202,8 @@ export default {
     if (url.pathname === "/health") return json({ ok: true });
     const isSearch = url.pathname === "/search" && request.method === "POST";
     const isPopular = url.pathname === "/popular" && request.method === "GET";
-    if (!isSearch && !isPopular) return json({ error: "Not found" }, 404);
+    const isDetails = url.pathname === "/details" && request.method === "POST";
+    if (!isSearch && !isPopular && !isDetails) return json({ error: "Not found" }, 404);
     if (!env.IGDB_CLIENT_ID || !env.IGDB_CLIENT_SECRET) return json({ error: "Servidor sem chaves do IGDB configuradas." }, 500);
 
     if (env.SEARCH_LIMITER) {
@@ -156,11 +214,19 @@ export default {
 
     if (isPopular) return cachedQuery(env, ctx, "https://igdb-cache.internal/v1/popular", POPULAR_QUERY, (games) => games);
 
-    let body: { query?: unknown };
+    let body: { query?: unknown; ids?: unknown };
     try {
       body = await request.json();
     } catch {
       return json({ error: "Corpo inválido." }, 400);
+    }
+
+    if (isDetails) {
+      const raw = Array.isArray(body?.ids) ? body.ids : [];
+      const ids = [...new Set(raw.map(Number).filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+      if (!ids.length) return json([]);
+      if (ids.length > MAX_DETAIL_IDS) return json({ error: `Envie no máximo ${MAX_DETAIL_IDS} jogos por vez.` }, 400);
+      return details(env, ctx, ids);
     }
     const query = String(body?.query ?? "")
       .replace(/["\\]/g, "")

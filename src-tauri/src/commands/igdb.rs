@@ -4,12 +4,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 use tokio::sync::Mutex;
 
 const TOKEN_URL: &str = "https://id.twitch.tv/oauth2/token";
 const GAMES_URL: &str = "https://api.igdb.com/v4/games";
+const TIME_TO_BEAT_URL: &str = "https://api.igdb.com/v4/game_time_to_beats";
 const CREDENTIALS_FILE: &str = "igdb.json";
 /// Public search proxy (see worker/). It holds the Twitch secret server-side, so this URL is safe to commit.
 const BUNDLED_PROXY_URL: &str = "https://game-organizer-igdb.contato-jgleiva.workers.dev";
@@ -154,7 +155,7 @@ async fn search_via_proxy(client: &reqwest::Client, base: &str, query: &str) -> 
     proxy_request(req).await
 }
 
-async fn proxy_request(req: reqwest::RequestBuilder) -> Result<Vec<GameResult>, String> {
+async fn proxy_request<T: DeserializeOwned>(req: reqwest::RequestBuilder) -> Result<T, String> {
     let res = req.send().await.map_err(|e| format!("Falha de rede ao buscar jogos: {e}"))?;
     if !res.status().is_success() {
         let status = res.status().as_u16();
@@ -297,7 +298,86 @@ const FIELDS: &str = "name,first_release_date,summary,cover.image_id,genres.name
 const POPULAR_FILTER: &str =
     "where game_type = (0,8,9) & version_parent = null & total_rating_count > 500; sort total_rating_count desc; limit 30;";
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameDetails {
+    igdb_id: i64,
+    critic_rating: Option<f64>,
+    igdb_rating: Option<f64>,
+    /// Seconds.
+    time_to_beat: Option<i64>,
+}
+
+#[derive(Deserialize)]
+struct RawRatings {
+    id: i64,
+    aggregated_rating: Option<f64>,
+    total_rating: Option<f64>,
+}
+
+#[derive(Deserialize)]
+struct RawTimeToBeat {
+    game_id: i64,
+    hastily: Option<i64>,
+    normally: Option<i64>,
+    completely: Option<i64>,
+}
+
+const MAX_DETAIL_IDS: usize = 50;
+
+/// Ratings and average time to beat for up to 50 IGDB games.
+#[tauri::command]
+pub async fn game_details(app: AppHandle, state: State<'_, IgdbState>, ids: Vec<i64>) -> Result<Vec<GameDetails>, String> {
+    let ids: Vec<i64> = ids.into_iter().filter(|id| *id > 0).take(MAX_DETAIL_IDS).collect();
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let Some((creds, _)) = load_credentials(&app) else {
+        let base = proxy_url().ok_or("Servidor de busca do IGDB não configurado.")?;
+        let req = state
+            .client
+            .post(format!("{}/details", base.trim_end_matches('/')))
+            .json(&serde_json::json!({ "ids": ids }));
+        return proxy_request(req).await;
+    };
+
+    let list = ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",");
+    let ratings: Vec<RawRatings> = query_igdb_at(
+        &state,
+        &creds,
+        GAMES_URL,
+        format!("fields aggregated_rating,total_rating; where id = ({list}); limit {MAX_DETAIL_IDS};"),
+    )
+    .await?;
+    let times: Vec<RawTimeToBeat> = query_igdb_at(
+        &state,
+        &creds,
+        TIME_TO_BEAT_URL,
+        format!("fields game_id,hastily,normally,completely; where game_id = ({list}); limit {MAX_DETAIL_IDS};"),
+    )
+    .await?;
+    Ok(ids
+        .into_iter()
+        .map(|id| {
+            let r = ratings.iter().find(|r| r.id == id);
+            GameDetails {
+                igdb_id: id,
+                critic_rating: r.and_then(|r| r.aggregated_rating),
+                igdb_rating: r.and_then(|r| r.total_rating),
+                time_to_beat: times
+                    .iter()
+                    .find(|t| t.game_id == id)
+                    .and_then(|t| t.normally.or(t.hastily).or(t.completely)),
+            }
+        })
+        .collect())
+}
+
 async fn query_igdb(state: &IgdbState, creds: &Credentials, body: String) -> Result<Vec<RawGame>, String> {
+    query_igdb_at(state, creds, GAMES_URL, body).await
+}
+
+async fn query_igdb_at<T: DeserializeOwned>(state: &IgdbState, creds: &Credentials, url: &str, body: String) -> Result<T, String> {
     let access_token = {
         let mut guard = state.token.lock().await;
         let valid = guard.as_ref().filter(|t| t.expires_at > Instant::now());
@@ -314,7 +394,7 @@ async fn query_igdb(state: &IgdbState, creds: &Credentials, body: String) -> Res
 
     let res = state
         .client
-        .post(GAMES_URL)
+        .post(url)
         .header("Client-ID", &creds.client_id)
         .bearer_auth(&access_token)
         .header("Accept", "application/json")

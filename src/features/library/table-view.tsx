@@ -6,16 +6,17 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, CalendarCheck, Gamepad2, ListChecks, Tags } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarCheck, Gamepad2, ListChecks, Shapes, Tags, Timer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { completionSortKey } from "@/lib/completion";
+import { formatTimeToBeat, scoreOf } from "@/lib/igdb-info";
 import { useSetEntryCategories, useUpdateEntry } from "@/lib/queries";
 import type { LibraryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CompletionField } from "@/components/game/completion-field";
 import { Cover } from "@/components/game/cover";
-import { CategoryPicker, StatusSelect } from "@/components/game/tags";
+import { CategoryPicker, StatusSelect, Tag } from "@/components/game/tags";
 
 const col = createColumnHelper<LibraryEntry>();
 const STATUS_ORDER = { playing: 0, backlog: 1, completed: 2 };
@@ -43,7 +44,28 @@ export function TableView({ entries }: { entries: LibraryEntry[] }) {
           >
             <Cover url={row.original.coverUrl} name={row.original.name} className="h-8 w-6 shrink-0 rounded-[3px]" />
             <span className="truncate">{row.original.name}</span>
+            {scoreOf(row.original) !== null && (
+              <span className="shrink-0 font-normal text-muted-foreground">({scoreOf(row.original)})</span>
+            )}
           </button>
+        ),
+      }),
+      col.accessor((e) => e.genres.join(", "), {
+        id: "genres",
+        header: () => (
+          <>
+            <Shapes /> Gênero
+          </>
+        ),
+        size: 220,
+        cell: ({ row }) => (
+          <div className="flex gap-1 overflow-hidden px-1">
+            {row.original.genres.slice(0, 3).map((g) => (
+              <Tag key={g} color={g === "Indie" ? "purple" : "gray"}>
+                {g}
+              </Tag>
+            ))}
+          </div>
         ),
       }),
       col.accessor("status", {
@@ -69,6 +91,16 @@ export function TableView({ entries }: { entries: LibraryEntry[] }) {
         cell: ({ row }) => (
           <CompletionField entry={row.original} onPatch={(patch) => updateEntry({ entry: row.original, patch })} />
         ),
+      }),
+      col.accessor("timeToBeat", {
+        header: () => (
+          <>
+            <Timer /> Tempo
+          </>
+        ),
+        size: 100,
+        sortUndefined: "last",
+        cell: ({ getValue }) => <span className="px-1 text-muted-foreground">{formatTimeToBeat(getValue()) ?? ""}</span>,
       }),
       col.accessor((e) => e.categoryIds.length, {
         id: "categories",

@@ -1,6 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
 import { newId, nowIso, parseJsonArray } from "./utils";
-import type { Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
+import type { Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbDetails, IgdbGame, LibraryEntry, TagColor } from "./types";
 
 const DB_URL = "sqlite:games.db";
 
@@ -32,6 +32,9 @@ interface EntryRow {
   genres: string;
   platforms: string;
   summary: string | null;
+  critic_rating: number | null;
+  igdb_rating: number | null;
+  time_to_beat: number | null;
   status: GameStatus;
   platform: string | null;
   rating: number | null;
@@ -47,7 +50,7 @@ interface EntryRow {
 
 const ENTRY_SELECT = `
   SELECT ug.id, ug.game_id, g.igdb_id, g.name, g.cover_url, g.release_year, g.genres, g.platforms, g.summary,
-         ug.status, ug.platform, ug.rating, ug.hours, ug.started_at, ug.completed_at, ug.completed_year, ug.notes,
+         g.critic_rating, g.igdb_rating, g.time_to_beat, ug.status, ug.platform, ug.rating, ug.hours, ug.started_at, ug.completed_at, ug.completed_year, ug.notes,
          ug.created_at, ug.updated_at,
          (SELECT group_concat(ugc.category_id) FROM user_game_categories ugc
             JOIN categories c ON c.id = ugc.category_id AND c.deleted_at IS NULL
@@ -67,6 +70,9 @@ function toEntry(r: EntryRow): LibraryEntry {
     genres: parseJsonArray(r.genres),
     gamePlatforms: parseJsonArray(r.platforms),
     summary: r.summary,
+    criticRating: r.critic_rating,
+    igdbRating: r.igdb_rating,
+    timeToBeat: r.time_to_beat,
     status: r.status,
     platform: r.platform,
     rating: r.rating,
@@ -220,6 +226,33 @@ export async function updateEntry(id: string, patch: EntryPatch, current?: Libra
       now,
       current.gameId,
     ]);
+  }
+}
+
+const IGDB_REFRESH_DAYS = 30;
+
+/** Library games whose IGDB ratings / time to beat were never fetched or are getting old. */
+export async function listGamesToSync(): Promise<number[]> {
+  const db = await getDb();
+  const staleBefore = new Date(Date.now() - IGDB_REFRESH_DAYS * 86_400_000).toISOString();
+  const rows = await db.select<{ igdb_id: number }[]>(
+    `SELECT DISTINCT g.igdb_id FROM games g
+       JOIN user_games ug ON ug.game_id = g.id AND ug.deleted_at IS NULL
+      WHERE g.igdb_id IS NOT NULL AND (g.igdb_synced_at IS NULL OR g.igdb_synced_at < $1)`,
+    [staleBefore],
+  );
+  return rows.map((r) => r.igdb_id);
+}
+
+/** Derived data, so updated_at is left alone and backups don't treat it as a user edit. */
+export async function saveGameDetails(details: IgdbDetails[]) {
+  const db = await getDb();
+  const now = nowIso();
+  for (const d of details) {
+    await db.execute(
+      "UPDATE games SET critic_rating = $1, igdb_rating = $2, time_to_beat = $3, igdb_synced_at = $4 WHERE igdb_id = $5",
+      [d.criticRating, d.igdbRating, d.timeToBeat, now, d.igdbId],
+    );
   }
 }
 

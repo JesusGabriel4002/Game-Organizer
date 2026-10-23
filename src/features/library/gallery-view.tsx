@@ -3,6 +3,7 @@ import { completionLabel } from "@/lib/completion";
 import { useCategories } from "@/lib/queries";
 import type { LibraryEntry } from "@/lib/types";
 import { Cover } from "@/components/game/cover";
+import { ScoreBadge } from "@/components/game/score-badge";
 import { CategoryTags, StatusTag } from "@/components/game/tags";
 
 export function GalleryView({ entries }: { entries: LibraryEntry[] }) {
@@ -16,8 +17,9 @@ export function GalleryView({ entries }: { entries: LibraryEntry[] }) {
           onClick={() => navigate(`/game/${e.id}`)}
           className="group overflow-hidden rounded-lg border border-border bg-background text-left shadow-sm transition hover:shadow-md"
         >
-          <div className="aspect-[3/4] overflow-hidden bg-accent">
+          <div className="relative aspect-[3/4] overflow-hidden bg-accent">
             <Cover url={e.coverUrl} name={e.name} className="size-full transition-transform duration-300 group-hover:scale-[1.03]" />
+            <ScoreBadge entry={e} />
           </div>
           <div className="space-y-1.5 p-2.5">
             <p className="truncate text-sm font-medium">{e.name}</p>

@@ -13,6 +13,7 @@ import {
   Star,
   Tags,
   Target,
+  Timer,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -26,7 +27,9 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState, PageContainer } from "@/components/layout/page";
 import { Cover } from "@/components/game/cover";
+import { formatTimeToBeat } from "@/lib/igdb-info";
 import { CompletionField } from "@/components/game/completion-field";
+import { ScoreBadge } from "@/components/game/score-badge";
 import { DateField, NumberField, RatingField, TextField } from "@/components/game/fields";
 import { CategoryPicker, StatusSelect, Tag } from "@/components/game/tags";
 import { NotesEditor } from "./notes-editor";
@@ -136,7 +139,10 @@ export function GamePage() {
 
       <PageContainer className="pt-0">
         <div className="-mt-24 flex items-end gap-6">
-          <Cover url={entry.coverUrl} name={entry.name} className="relative h-56 w-40 shrink-0 rounded-lg border border-border shadow-xl" />
+          <div className="relative shrink-0">
+            <Cover url={entry.coverUrl} name={entry.name} className="h-56 w-40 rounded-lg border border-border shadow-xl" />
+            <ScoreBadge entry={entry} />
+          </div>
           <div className="min-w-0 pb-2">
             <TextField
               value={entry.name}
@@ -185,6 +191,11 @@ export function GamePage() {
           <Property icon={<Clock />} label="Horas jogadas">
             <NumberField value={entry.hours} suffix="h" onCommit={(hours) => updateEntry({ entry, patch: { hours } })} className="max-w-40" />
           </Property>
+          {entry.timeToBeat !== null && (
+            <Property icon={<Timer />} label="Tempo para zerar">
+              <span className="px-1 text-sm">{formatTimeToBeat(entry.timeToBeat)}</span>
+            </Property>
+          )}
           <Property icon={<CalendarClock />} label="Começou em">
             <DateField value={entry.startedAt} onCommit={(startedAt) => updateEntry({ entry, patch: { startedAt } })} className="max-w-44" />
           </Property>
