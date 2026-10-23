@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Outlet } from "react-router-dom";
 import { useIgdbSync } from "@/lib/queries";
 import { useUi, usePalette } from "@/lib/store";
@@ -14,6 +15,10 @@ function useThemeClass() {
       const dark = theme === "dark" || (theme === "system" && media.matches);
       document.documentElement.classList.toggle("dark", dark);
     };
+    // Windows title bar: null follows the system theme.
+    getCurrentWindow()
+      .setTheme(theme === "system" ? null : theme)
+      .catch(() => {});
     apply();
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
@@ -39,7 +44,7 @@ export function AppLayout() {
   usePaletteShortcut();
   useIgdbSync();
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden border-t border-border">
       <Sidebar />
       <main className="min-w-0 flex-1 overflow-auto">
         <Outlet />

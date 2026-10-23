@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { FileSpreadsheet, FileDown } from "lucide-react";
+import { Download, FileSpreadsheet, FileDown } from "lucide-react";
 import { files } from "@/lib/api";
-import { CSV_TEMPLATE, importCsvRows, parseCsv, type ImportResult } from "@/lib/csv-import";
+import { CSV_TEMPLATE, exportLibraryCsv, importCsvRows, parseCsv, type ImportResult } from "@/lib/csv-import";
 import { keys } from "@/lib/queries";
 import { toast } from "@/lib/toast";
 import { errorMessage } from "@/lib/utils";
@@ -16,7 +16,7 @@ const COLUMNS: { name: string; description: string }[] = [
   { name: "status", description: "pra zerar, jogando ou zerado. Vazio vira “Pra zerar”." },
   { name: "ano", description: "Se zerado: o ano em que zerou. Se pra zerar: até quando quer zerar." },
   { name: "plataforma", description: "PC, PS5, Switch..." },
-  { name: "nota", description: "De 0 a 10." },
+  { name: "nota", description: "De 0 a 5 estrelas." },
   { name: "horas", description: "Horas jogadas." },
 ];
 
@@ -70,6 +70,29 @@ function Summary({ results }: { results: ImportResult[] }) {
         </details>
       )}
     </div>
+  );
+}
+
+export function CsvExportButton() {
+  const doExport = async () => {
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      const path = await saveDialog({
+        defaultPath: `game-organizer-${date}.csv`,
+        filters: [{ name: "CSV", extensions: ["csv"] }],
+      });
+      if (!path) return;
+      await files.write(path, await exportLibraryCsv());
+      toast.info("Lista exportada em CSV.");
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
+  };
+
+  return (
+    <Button variant="outline" onClick={doExport}>
+      <Download /> Exportar CSV
+    </Button>
   );
 }
 

@@ -101,39 +101,29 @@ export function DateField({
   );
 }
 
-/** 0-10 score shown as five stars (each star = 2 points, half stars allowed). */
+/** 0-5 stars. Click the same star again to clear. */
 export function RatingField({ value, onCommit }: { value: number | null; onCommit: (value: number | null) => void }) {
   const [hover, setHover] = useState<number | null>(null);
   const shown = hover ?? value ?? 0;
   return (
     <div className="flex items-center" onMouseLeave={() => setHover(null)} onClick={(e) => e.stopPropagation()}>
-      {[1, 2, 3, 4, 5].map((i) => {
-        const full = shown >= i * 2;
-        const half = !full && shown >= i * 2 - 1;
-        return (
-          <span key={i} className="relative size-4">
-            <Star className="absolute size-4 text-accent-strong" fill="currentColor" strokeWidth={0} />
-            {(full || half) && (
-              <span className={cn("absolute inset-0 overflow-hidden", half ? "w-1/2" : "w-full")}>
-                <Star className="size-4 text-[#dfab01]" fill="currentColor" strokeWidth={0} />
-              </span>
-            )}
-            <button
-              className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
-              onMouseEnter={() => setHover(i * 2 - 1)}
-              onClick={() => onCommit(value === i * 2 - 1 ? null : i * 2 - 1)}
-              aria-label={`${i * 2 - 1} de 10`}
-            />
-            <button
-              className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
-              onMouseEnter={() => setHover(i * 2)}
-              onClick={() => onCommit(value === i * 2 ? null : i * 2)}
-              aria-label={`${i * 2} de 10`}
-            />
-          </span>
-        );
-      })}
-      {value !== null && <span className="ml-1.5 text-xs text-muted-foreground">{value}/10</span>}
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button
+          key={i}
+          type="button"
+          className="cursor-pointer p-0"
+          onMouseEnter={() => setHover(i)}
+          onClick={() => onCommit(value === i ? null : i)}
+          aria-label={`${i} de 5`}
+        >
+          <Star
+            className={cn("size-4", shown >= i ? "text-[#dfab01]" : "text-accent-strong")}
+            fill="currentColor"
+            strokeWidth={0}
+          />
+        </button>
+      ))}
+      {value !== null && <span className="ml-1.5 text-xs text-muted-foreground">{value}/5</span>}
     </div>
   );
 }

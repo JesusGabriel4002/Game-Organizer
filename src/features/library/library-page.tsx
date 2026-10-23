@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { completionSortKey } from "@/lib/completion";
 import { STATUS_META } from "@/lib/constants";
+import { scoreOf } from "@/lib/igdb-info";
+import { defaultLibrarySort } from "@/lib/library-sort";
 import { useCategories, useLibrary } from "@/lib/queries";
 import { usePalette, useUi, type ViewMode } from "@/lib/store";
 import type { GameStatus, LibraryEntry } from "@/lib/types";
@@ -28,13 +30,30 @@ const VIEWS: { mode: ViewMode; label: string; icon: React.ReactNode }[] = [
   { mode: "gallery", label: "Galeria", icon: <LayoutGrid /> },
 ];
 
-type SortKey = "updated" | "name" | "completed" | "rating";
+type SortKey = "default" | "updated" | "name" | "completed" | "rating";
 const SORTS: Record<SortKey, { label: string; fn: (a: LibraryEntry, b: LibraryEntry) => number }> = {
+  default: { label: "Padrão", fn: defaultLibrarySort },
   updated: { label: "Editados recentemente", fn: (a, b) => b.updatedAt.localeCompare(a.updatedAt) },
   name: { label: "Nome (A-Z)", fn: (a, b) => a.name.localeCompare(b.name, "pt-BR") },
   completed: { label: "Zerados recentemente", fn: (a, b) => completionSortKey(b).localeCompare(completionSortKey(a)) },
   rating: { label: "Maior nota", fn: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) },
 };
+
+/** Gallery default: highest critic/IGDB score first (the badge on the cover). */
+function galleryDefaultSort(a: LibraryEntry, b: LibraryEntry) {
+  return (scoreOf(b) ?? -1) - (scoreOf(a) ?? -1) || a.name.localeCompare(b.name, "pt-BR");
+}
+
+function sortFn(sort: SortKey, viewMode: ViewMode) {
+  if (sort === "default" && viewMode === "gallery") return galleryDefaultSort;
+  return SORTS[sort].fn;
+}
+
+function sortLabel(sort: SortKey, viewMode: ViewMode) {
+  if (sort === "default" && viewMode === "gallery") return "Nota da crítica";
+  if (sort === "default") return "Status e tempo";
+  return SORTS[sort].label;
+}
 
 const STATUS_ICONS: Record<GameStatus, string> = { backlog: "⏳", playing: "🎮", completed: "🏆" };
 
@@ -48,7 +67,7 @@ export function LibraryPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortKey>("updated");
+  const [sort, setSort] = useState<SortKey>("default");
 
   const category = categories.find((c) => c.id === categoryId);
   const platforms = useMemo(
@@ -64,8 +83,8 @@ export function LibraryPage() {
       .filter((e) => !categoryFilter.length || categoryFilter.every((id) => e.categoryIds.includes(id)))
       .filter((e) => !platformFilter || e.platform === platformFilter)
       .filter((e) => !q || e.name.toLowerCase().includes(q))
-      .sort(SORTS[sort].fn);
-  }, [library, status, categoryId, categoryFilter, platformFilter, search, sort]);
+      .sort(sortFn(sort, viewMode));
+  }, [library, status, categoryId, categoryFilter, platformFilter, search, sort, viewMode]);
 
   const title = status ? STATUS_META[status].label : category ? category.name : "Todos os jogos";
   const icon = status ? STATUS_ICONS[status] : category ? "🏷️" : "📚";
@@ -144,7 +163,7 @@ export function LibraryPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="subtle">
-                Ordenar: {SORTS[sort].label}
+                Ordenar: {sortLabel(sort, viewMode)}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -200,7 +219,7 @@ export function LibraryPage() {
       ) : entries.length === 0 && viewMode !== "board" ? (
         <EmptyState title="Nenhum jogo encontrado">Ajuste os filtros ou adicione um jogo novo.</EmptyState>
       ) : viewMode === "table" ? (
-        <TableView entries={entries} platforms={platforms} />
+        <TableView entries={entries} platforms={platforms} completedOnly={status === "completed"} />
       ) : viewMode === "board" ? (
         <BoardView entries={entries} />
       ) : (

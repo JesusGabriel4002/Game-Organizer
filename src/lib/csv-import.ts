@@ -1,15 +1,41 @@
 import { igdb } from "./api";
 import * as db from "./db";
-import type { EntryPatch, GameStatus } from "./types";
+import { defaultLibrarySort } from "./library-sort";
+import type { EntryPatch, GameStatus, LibraryEntry } from "./types";
 import { errorMessage } from "./utils";
 
 export const CSV_TEMPLATE = [
   "nome;status;ano;plataforma;nota;horas",
-  "Hollow Knight;zerado;2024;PC;9;45",
+  "Hollow Knight;zerado;2024;PC;5;45",
   "Elden Ring;jogando;;PS5;;",
   "Stardew Valley;pra zerar;2026;;;",
   "Celeste;;;;;",
 ].join("\r\n");
+
+const STATUS_EXPORT: Record<GameStatus, string> = {
+  backlog: "pra zerar",
+  playing: "jogando",
+  completed: "zerado",
+};
+
+function csvCell(value: string | number | null | undefined) {
+  const text = value == null ? "" : String(value);
+  return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** Same columns as the import template, so a round-trip works. */
+export function libraryToCsv(entries: LibraryEntry[]) {
+  const header = "nome;status;ano;plataforma;nota;horas";
+  const rows = [...entries].sort(defaultLibrarySort).map((e) => {
+    const year = e.status === "completed" ? e.completedYear : e.status === "backlog" ? e.targetYear : null;
+    return [e.name, STATUS_EXPORT[e.status], year, e.platform, e.rating, e.hours].map(csvCell).join(";");
+  });
+  return `\uFEFF${[header, ...rows].join("\r\n")}`;
+}
+
+export async function exportLibraryCsv() {
+  return libraryToCsv(await db.listLibrary());
+}
 
 export interface CsvRow {
   name: string;
@@ -129,7 +155,7 @@ export function parseCsv(text: string): CsvRow[] {
       status: parseStatus(cell(r, "status")),
       year: parseNumber(cell(r, "year"), 1970, maxYear),
       platform: cell(r, "platform") || null,
-      rating: parseNumber(cell(r, "rating"), 0, 10),
+      rating: parseNumber(cell(r, "rating"), 0, 5),
       hours: parseNumber(cell(r, "hours"), 0, 100_000),
     }))
     .filter((r) => r.name);
