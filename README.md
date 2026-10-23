@@ -16,6 +16,7 @@ Licença [MIT](LICENSE) · [Code signing policy](#code-signing-policy) · [Priva
 - Categorias com cores, filtros por categoria e plataforma, e categorização automática pelos gêneros do IGDB (ex.: todos os jogos "Indie" viram "Indies").
 - Página de cada jogo com status, nota (0 a 10), horas, datas de início e de quando zerou, e anotações em texto rico.
 - Metas:
+  - "zerar até" um ano em cada jogo "Pra zerar" (este ano, ano que vem...), escolhido ao adicionar, na tag de status ou na página do jogo, com o progresso de cada ano na tela de Metas;
   - zerar um jogo até uma data (ex.: até 15/03/2026);
   - zerar um jogo em um ano (ex.: em 2026);
   - zerar N jogos em um ano ou período, opcionalmente de uma categoria (ex.: 5 indies em 2026), com ritmo necessário por mês.

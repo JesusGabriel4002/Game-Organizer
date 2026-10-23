@@ -2,7 +2,7 @@ import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/re
 import { useEffect, useRef } from "react";
 import { igdb } from "./api";
 import * as db from "./db";
-import type { CompletionInput, EntryPatch, GameStatus, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
+import type { AddOptions, EntryPatch, GameStatus, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
 import { toast } from "./toast";
 import { errorMessage } from "./utils";
 
@@ -101,8 +101,8 @@ export function useUpdateEntry() {
 export function useAddFromIgdb() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ game, status, completion }: { game: IgdbGame; status: GameStatus; completion?: CompletionInput }) =>
-      db.addFromIgdb(game, status, completion),
+    mutationFn: ({ game, status, options }: { game: IgdbGame; status: GameStatus; options?: AddOptions }) =>
+      db.addFromIgdb(game, status, options),
     onSuccess: () => invalidate(keys.library),
   });
 }
@@ -110,8 +110,8 @@ export function useAddFromIgdb() {
 export function useAddManual() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ name, status, completion }: { name: string; status: GameStatus; completion?: CompletionInput }) =>
-      db.addManual(name, status, completion),
+    mutationFn: ({ name, status, options }: { name: string; status: GameStatus; options?: AddOptions }) =>
+      db.addManual(name, status, options),
     onSuccess: () => invalidate(keys.library),
   });
 }

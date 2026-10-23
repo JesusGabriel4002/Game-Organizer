@@ -4,6 +4,26 @@ import type { LibraryEntry } from "./types";
 
 type Completion = Pick<LibraryEntry, "completedAt" | "completedYear">;
 
+const TARGET_YEARS_AHEAD = 5;
+
+/** "Zerar até" choices: this year and the next few, labelled like "2027 (ano que vem)". */
+export function targetYearOptions(current: number | null = null, now = new Date()) {
+  const year = now.getFullYear();
+  const years = Array.from({ length: TARGET_YEARS_AHEAD + 1 }, (_, i) => year + i);
+  // Keep a past target visible so it can still be seen and changed.
+  if (current !== null && !years.includes(current)) years.unshift(current);
+  return years.map((y) => ({
+    value: y,
+    label: y === year ? `${y} (este ano)` : y === year + 1 ? `${y} (ano que vem)` : String(y),
+  }));
+}
+
+/** Text shown inside the status tag: when it was finished, or the year it should be finished by. */
+export function statusDetail(e: Completion & Pick<LibraryEntry, "status" | "targetYear">): string | null {
+  if (e.status === "completed") return completionLabel(e);
+  return e.targetYear ? `até ${e.targetYear}` : null;
+}
+
 export function completionYear(e: Completion): number | null {
   return e.completedYear ?? (e.completedAt ? Number(e.completedAt.slice(0, 4)) : null);
 }

@@ -4,7 +4,15 @@ import { STATUS_META, TAG_COLORS, randomTagColor } from "@/lib/constants";
 import { useCategories, useCreateCategory } from "@/lib/queries";
 import { STATUSES, type Category, type GameStatus, type TagColor } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { targetYearOptions } from "@/lib/completion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export function Tag({ color, children, className }: { color: TagColor; children: React.ReactNode; className?: string }) {
@@ -37,20 +45,26 @@ export function StatusSelect({
   value,
   onChange,
   detail,
+  targetYear,
+  onTargetYear,
   className,
 }: {
   value: GameStatus;
   onChange: (status: GameStatus) => void;
   detail?: string | null;
+  /** When given, games not finished yet get a "Zerar até" year picker in the menu. */
+  targetYear?: number | null;
+  onTargetYear?: (year: number | null) => void;
   className?: string;
 }) {
+  const showTarget = onTargetYear && value !== "completed";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn("flex items-center gap-1 rounded-sm px-1 py-0.5 outline-none hover:bg-accent", className)}
         onClick={(e) => e.stopPropagation()}
       >
-        <StatusTag status={value} detail={value === "completed" ? detail : null} />
+        <StatusTag status={value} detail={detail} />
       </DropdownMenuTrigger>
       <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
         {STATUSES.map((s) => (
@@ -59,6 +73,18 @@ export function StatusSelect({
             {s === value && <Check className="ml-auto" />}
           </DropdownMenuItem>
         ))}
+        {showTarget && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Zerar até</DropdownMenuLabel>
+            {[{ value: null, label: "Sem prazo" }, ...targetYearOptions(targetYear ?? null)].map((o) => (
+              <DropdownMenuItem key={o.value ?? "none"} onSelect={() => onTargetYear(o.value)}>
+                {o.label}
+                {(targetYear ?? null) === o.value && <Check className="ml-auto" />}
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
