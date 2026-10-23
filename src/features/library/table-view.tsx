@@ -15,7 +15,6 @@ import {
   ArrowDown,
   ArrowUp,
   Award,
-  CalendarCheck,
   Clock,
   Gamepad2,
   Hash,
@@ -30,14 +29,13 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { completionSortKey } from "@/lib/completion";
+import { completionLabel, completionSortKey } from "@/lib/completion";
 import { COMMON_PLATFORMS } from "@/lib/constants";
 import { formatTimeToBeat, scoreOf } from "@/lib/igdb-info";
 import { useSetEntryCategories, useUpdateEntry } from "@/lib/queries";
 import { useUi } from "@/lib/store";
 import type { LibraryEntry } from "@/lib/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CompletionField } from "@/components/game/completion-field";
 import { Cover } from "@/components/game/cover";
 import { NumberField, RatingField, TextField } from "@/components/game/fields";
 import { CategoryPicker, StatusSelect, Tag } from "@/components/game/tags";
@@ -56,7 +54,6 @@ function heading(icon: ReactNode, label: string) {
 /** Optional columns, in the order they're offered by the "+" menu. */
 const COLUMN_LABELS: Record<string, { label: string; icon: ReactNode }> = {
   status: { label: "Status", icon: <ListChecks /> },
-  completion: { label: "Zerado em", icon: <CalendarCheck /> },
   categories: { label: "Categorias", icon: <Tags /> },
   timeToBeat: { label: "Tempo", icon: <Timer /> },
   genres: { label: "Gênero", icon: <Shapes /> },
@@ -134,17 +131,18 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
       }),
       col.accessor("status", {
         header: heading(COLUMN_LABELS.status.icon, "Status"),
-        size: 130,
-        sortingFn: (a, b) => STATUS_ORDER[a.original.status] - STATUS_ORDER[b.original.status],
+        size: 170,
+        // Finished games sort by when they were finished, most recent last within the group.
+        sortingFn: (a, b) =>
+          STATUS_ORDER[a.original.status] - STATUS_ORDER[b.original.status] ||
+          completionSortKey(a.original).localeCompare(completionSortKey(b.original)),
         cell: ({ row }) => (
-          <StatusSelect value={row.original.status} onChange={(status) => updateEntry({ entry: row.original, patch: { status } })} />
+          <StatusSelect
+            value={row.original.status}
+            detail={completionLabel(row.original)}
+            onChange={(status) => updateEntry({ entry: row.original, patch: { status } })}
+          />
         ),
-      }),
-      col.accessor(completionSortKey, {
-        id: "completion",
-        header: heading(COLUMN_LABELS.completion.icon, "Zerado em"),
-        size: 120,
-        cell: ({ row }) => <CompletionField entry={row.original} onPatch={(patch) => updateEntry({ entry: row.original, patch })} />,
       }),
       col.accessor((e) => e.categoryIds.length, {
         id: "categories",

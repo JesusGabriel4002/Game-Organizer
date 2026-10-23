@@ -23,12 +23,7 @@ export function GalleryView({ entries }: { entries: LibraryEntry[] }) {
           </div>
           <div className="space-y-1.5 p-2.5">
             <p className="truncate text-sm font-medium">{e.name}</p>
-            <div className="flex items-center gap-1.5">
-              <StatusTag status={e.status} />
-              {e.status === "completed" && completionLabel(e) && (
-                <span className="text-xs text-muted-foreground">em {completionLabel(e)}</span>
-              )}
-            </div>
+            <StatusTag status={e.status} detail={e.status === "completed" ? completionLabel(e) : null} />
             <CategoryTags ids={e.categoryIds} categories={categories} max={2} />
           </div>
         </button>
