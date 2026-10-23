@@ -6,6 +6,8 @@ dist/
 dist-ssr/
 src-tauri/target/
 src-tauri/gen/schemas/
+.wrangler/
+.dev.vars
 
 # Secrets and local data (never commit)
 .env

@@ -66,6 +66,6 @@ export interface IgdbGame {
 
 export interface IgdbStatus {
   configured: boolean;
-  source: "settings" | "env" | null;
+  source: "settings" | "env" | "proxy" | null;
   clientIdHint: string | null;
 }

@@ -56,7 +56,8 @@ function IgdbSection() {
       title="Busca de jogos (IGDB)"
       description={
         <>
-          O IGDB é a base de jogos da Twitch. Crie um app grátis em{" "}
+          O IGDB é a base de jogos da Twitch. A busca já funciona pelo servidor padrão do Game Organizer, sem
+          configurar nada. Se preferir usar sua própria chave (opcional), crie um app grátis em{" "}
           <button className="text-primary underline" onClick={() => openUrl("https://dev.twitch.tv/console/apps")}>
             dev.twitch.tv/console/apps <ExternalLink className="inline size-3" />
           </button>{" "}
@@ -69,8 +70,9 @@ function IgdbSection() {
         <div className="mb-4 flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm">
           <CheckCircle2 className="size-4 text-[#4dab9a]" />
           <span className="flex-1">
-            Configurado ({status.data.source === "env" ? "variáveis de ambiente" : "salvo no app"}) · Client ID{" "}
-            {status.data.clientIdHint}
+            {status.data.source === "proxy"
+              ? "Usando o servidor de busca padrão"
+              : `Usando sua chave (${status.data.source === "env" ? "variáveis de ambiente" : "salva no app"}) · Client ID ${status.data.clientIdHint}`}
           </span>
           {status.data.source === "settings" && (
             <Button size="sm" variant="destructive" onClick={clear}>

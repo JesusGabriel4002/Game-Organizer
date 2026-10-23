@@ -7,7 +7,7 @@ Tudo fica salvo localmente num banco SQLite. Nenhum dado ou chave vai para a nuv
 ## Funcionalidades
 
 - Biblioteca com três visualizações: **tabela** (edição direto na célula), **board** kanban (arraste para mudar o status) e **galeria** de capas.
-- Busca de jogos no **IGDB** (base da Twitch) com `Ctrl+K`: capa, ano, gêneros e plataformas preenchidos automaticamente. Também dá para adicionar jogos manualmente.
+- Busca de jogos no **IGDB** (base da Twitch) com `Ctrl+K`, sem precisar cadastrar chave: capa, ano, gêneros e plataformas preenchidos automaticamente. Também dá para adicionar jogos manualmente.
 - Categorias com cores, filtros por categoria e plataforma, e categorização automática pelos gêneros do IGDB (ex.: todos os jogos "Indie" viram "Indies").
 - Página de cada jogo com status, nota (0 a 10), horas, datas de início e de quando zerou, e anotações em texto rico.
 - Metas:
@@ -85,20 +85,53 @@ npm run tauri build
 gh release create v0.2.0 "src-tauri/target/release/bundle/nsis/Game Organizer_0.2.0_x64-setup.exe" "src-tauri/target/release/bundle/msi/Game Organizer_0.2.0_x64_en-US.msi" --title "Game Organizer v0.2.0" --generate-notes
 ```
 
-## Configurando a busca do IGDB
+## Busca de jogos (IGDB)
 
-1. Entre em [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) e crie um app (OAuth Redirect URL: `http://localhost`, categoria "Application Integration").
-2. Gere um **Client Secret**.
-3. No app, vá em **Configurações** e cole o Client ID e o Client Secret. O app valida as chaves antes de salvar.
+A busca funciona sem configurar nada. O app consulta um servidor intermediário próprio, um Cloudflare Worker em [`worker/`](worker/), que guarda a chave da Twitch e repassa as buscas ao IGDB. O secret nunca fica no repositório nem dentro do `.exe`.
 
-As chaves ficam em `%APPDATA%\com.gameorganizer.app\igdb.json`, fora do repositório. Em desenvolvimento você também pode usar as variáveis de ambiente `IGDB_CLIENT_ID` e `IGDB_CLIENT_SECRET` (veja `.env.example`). A chamada ao IGDB é feita pelo lado Rust, então o segredo não passa pelo frontend.
+O app escolhe a fonte nesta ordem:
+
+1. Chaves próprias salvas em **Configurações** (opcional, para quem quiser usar a própria cota).
+2. Variáveis de ambiente `IGDB_CLIENT_ID` e `IGDB_CLIENT_SECRET` (útil em desenvolvimento, veja `.env.example`).
+3. O servidor padrão, definido em `BUNDLED_PROXY_URL` em [`src-tauri/src/commands/igdb.rs`](src-tauri/src/commands/igdb.rs). Pode ser trocado em tempo de execução com a variável `IGDB_PROXY_URL`.
+
+As chaves próprias ficam em `%APPDATA%\com.gameorganizer.app\igdb.json`, fora do repositório. Todas as chamadas são feitas pelo lado Rust, então nenhum segredo passa pelo frontend.
+
+### Servidor de busca (Cloudflare Worker)
+
+- Endpoint: `POST /search` com `{"query": "hollow knight"}`, que retorna até 20 jogos já no formato do app. Há também `GET /health`.
+- Limite de 30 buscas por minuto por IP e cache de 24 horas por termo buscado.
+- O plano grátis da Cloudflare permite 100 mil requisições por dia.
+
+Para publicar o seu próprio Worker:
+
+1. Crie um app em [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps):
+   - OAuth Redirect URL: `http://localhost`. O campo é obrigatório, mas o fluxo usado (client credentials) não faz redirecionamento.
+   - Categoria: "Application Integration".
+   - Gere um **Client Secret**. A Twitch exige verificação em duas etapas na conta para isso.
+2. Faça o login, cadastre os secrets e publique:
+
+   ```powershell
+   cd worker
+   npm install
+   npx wrangler login
+   npx wrangler secret put IGDB_CLIENT_ID
+   npx wrangler secret put IGDB_CLIENT_SECRET
+   npx wrangler deploy
+   ```
+
+   Se for o primeiro Worker da conta, a Cloudflare pede para registrar um subdomínio `workers.dev` no painel (Workers & Pages). Um subdomínio novo pode levar alguns minutos para ter certificado HTTPS.
+3. Coloque a URL publicada em `BUNDLED_PROXY_URL`. A URL não é secreta e pode ir para o repositório.
+
+Para trocar uma chave vazada, gere um novo secret na Twitch e rode `npx wrangler secret put IGDB_CLIENT_SECRET` de novo.
 
 ## Onde ficam os dados
 
 | O quê | Onde |
 | --- | --- |
 | Banco SQLite | `%APPDATA%\com.gameorganizer.app\games.db` |
-| Chaves do IGDB | `%APPDATA%\com.gameorganizer.app\igdb.json` |
+| Chaves próprias do IGDB (opcional) | `%APPDATA%\com.gameorganizer.app\igdb.json` |
+| Chaves do servidor de busca | Secrets do Worker na Cloudflare |
 
 O `.gitignore` bloqueia `.env`, `*.db`, `*.sqlite`, `igdb.json` e arquivos de backup, para nada pessoal ir parar no GitHub.
 
@@ -112,6 +145,8 @@ src/
 src-tauri/
   migrations/      SQL do banco
   src/commands/    igdb.rs (busca + token da Twitch), files.rs (backup)
+worker/
+  src/index.ts     servidor de busca (Cloudflare Worker) que guarda a chave do IGDB
 scripts/
   bump-version.mjs atualiza a versão nos três arquivos de configuração
 .github/workflows/
