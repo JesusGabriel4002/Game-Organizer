@@ -1,0 +1,97 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #37352f;
+  --muted: #f7f7f5;
+  --muted-foreground: #787774;
+  --border: #e9e9e7;
+  --accent: rgba(55, 53, 47, 0.06);
+  --accent-strong: rgba(55, 53, 47, 0.12);
+  --popover: #ffffff;
+  --sidebar: #f7f7f5;
+  --primary: #2383e2;
+  --primary-foreground: #ffffff;
+  --destructive: #e03e3e;
+  --ring: rgba(35, 131, 226, 0.5);
+  --radius: 6px;
+}
+
+.dark {
+  --background: #191919;
+  --foreground: rgba(255, 255, 255, 0.86);
+  --muted: #202020;
+  --muted-foreground: #9b9b9b;
+  --border: #2f2f2f;
+  --accent: rgba(255, 255, 255, 0.055);
+  --accent-strong: rgba(255, 255, 255, 0.1);
+  --popover: #252525;
+  --sidebar: #202020;
+  --primary: #2383e2;
+  --primary-foreground: #ffffff;
+  --destructive: #ff5c5c;
+  --ring: rgba(35, 131, 226, 0.6);
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-popover: var(--popover);
+  --color-sidebar: var(--sidebar);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 14px;
+  }
+  ::selection {
+    background: rgba(35, 131, 226, 0.28);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--accent-strong);
+    border-radius: 10px;
+    border: 2px solid var(--background);
+  }
+}
+
+.tiptap {
+  outline: none;
+  min-height: 200px;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--muted-foreground);
+}
