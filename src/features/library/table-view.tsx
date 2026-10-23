@@ -246,7 +246,7 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
   };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <datalist id="platform-options">
         {[...new Set([...platforms, ...COMMON_PLATFORMS])].map((p) => (
           <option key={p} value={p} />
@@ -256,7 +256,7 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
         <table className="w-full border-collapse text-sm" style={{ minWidth: table.getTotalSize() + 40 }}>
           <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-y border-border">
+              <tr key={hg.id} className="border-b border-border">
                 <SortableContext items={visibleIds} strategy={horizontalListSortingStrategy}>
                   {hg.headers.map((h) => (
                     <SortableHeader
@@ -299,7 +299,7 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="group border-b border-border hover:bg-accent/50">
+              <tr key={row.id} className="group border-b border-border last:border-b-0 hover:bg-accent/50">
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="border-r border-border px-1 py-0.5">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
