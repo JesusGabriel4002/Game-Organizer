@@ -33,6 +33,12 @@ fn migrations() -> Vec<Migration> {
             sql: normalized(include_str!("../migrations/003_igdb_details.sql")),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "target_year",
+            sql: normalized(include_str!("../migrations/004_target_year.sql")),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

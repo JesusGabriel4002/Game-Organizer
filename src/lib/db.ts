@@ -1,7 +1,7 @@
 import Database from "@tauri-apps/plugin-sql";
 import { matchCategories } from "./auto-categories";
 import { newId, nowIso, parseJsonArray } from "./utils";
-import type { Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbDetails, IgdbGame, LibraryEntry, TagColor } from "./types";
+import type { AddOptions, Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbDetails, IgdbGame, LibraryEntry, TagColor } from "./types";
 
 const DB_URL = "sqlite:games.db";
 
@@ -43,6 +43,7 @@ interface EntryRow {
   started_at: string | null;
   completed_at: string | null;
   completed_year: number | null;
+  target_year: number | null;
   notes: string;
   category_ids: string | null;
   created_at: string;
@@ -51,7 +52,7 @@ interface EntryRow {
 
 const ENTRY_SELECT = `
   SELECT ug.id, ug.game_id, g.igdb_id, g.name, g.cover_url, g.release_year, g.genres, g.platforms, g.summary,
-         g.critic_rating, g.igdb_rating, g.time_to_beat, ug.status, ug.platform, ug.rating, ug.hours, ug.started_at, ug.completed_at, ug.completed_year, ug.notes,
+         g.critic_rating, g.igdb_rating, g.time_to_beat, ug.status, ug.platform, ug.rating, ug.hours, ug.started_at, ug.completed_at, ug.completed_year, ug.target_year, ug.notes,
          ug.created_at, ug.updated_at,
          (SELECT group_concat(ugc.category_id) FROM user_game_categories ugc
             JOIN categories c ON c.id = ugc.category_id AND c.deleted_at IS NULL
@@ -81,6 +82,7 @@ function toEntry(r: EntryRow): LibraryEntry {
     startedAt: r.started_at,
     completedAt: r.completed_at,
     completedYear: r.completed_year,
+    targetYear: r.target_year,
     notes: r.notes ?? "",
     categoryIds: r.category_ids ? r.category_ids.split(",") : [],
     createdAt: r.created_at,
@@ -119,15 +121,15 @@ function statusDates(status: GameStatus, completion?: CompletionInput) {
   };
 }
 
-async function insertUserGame(gameId: string, status: GameStatus, platform: string | null, completion?: CompletionInput) {
+async function insertUserGame(gameId: string, status: GameStatus, platform: string | null, options: AddOptions = {}) {
   const db = await getDb();
   const id = newId();
-  const dates = statusDates(status, completion);
+  const dates = statusDates(status, options.completion);
   const now = nowIso();
   await db.execute(
-    `INSERT INTO user_games (id, game_id, status, platform, started_at, completed_at, completed_year, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)`,
-    [id, gameId, status, platform, dates.started_at, dates.completed_at, dates.completed_year, now],
+    `INSERT INTO user_games (id, game_id, status, platform, started_at, completed_at, completed_year, target_year, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`,
+    [id, gameId, status, platform, dates.started_at, dates.completed_at, dates.completed_year, options.targetYear ?? null, now],
   );
   return id;
 }
@@ -136,7 +138,7 @@ async function insertUserGame(gameId: string, status: GameStatus, platform: stri
 export async function addFromIgdb(
   game: IgdbGame,
   status: GameStatus,
-  completion?: CompletionInput,
+  options?: AddOptions,
 ): Promise<{ id: string; existed: boolean }> {
   const db = await getDb();
   const now = nowIso();
@@ -163,15 +165,15 @@ export async function addFromIgdb(
     );
   }
   const platform = game.platforms.length === 1 ? game.platforms[0] : null;
-  return { id: await insertUserGame(gameId, status, platform, completion), existed: false };
+  return { id: await insertUserGame(gameId, status, platform, options), existed: false };
 }
 
-export async function addManual(name: string, status: GameStatus, completion?: CompletionInput): Promise<string> {
+export async function addManual(name: string, status: GameStatus, options?: AddOptions): Promise<string> {
   const db = await getDb();
   const gameId = newId();
   const now = nowIso();
   await db.execute("INSERT INTO games (id, name, created_at, updated_at) VALUES ($1, $2, $3, $3)", [gameId, name.trim(), now]);
-  return insertUserGame(gameId, status, null, completion);
+  return insertUserGame(gameId, status, null, options);
 }
 
 export async function updateEntry(id: string, patch: EntryPatch, current?: LibraryEntry) {
@@ -193,6 +195,7 @@ export async function updateEntry(id: string, patch: EntryPatch, current?: Libra
       cols.completed_year = null;
     }
   }
+  if (patch.targetYear !== undefined) cols.target_year = patch.targetYear;
   if (patch.platform !== undefined) cols.platform = patch.platform || null;
   if (patch.rating !== undefined) cols.rating = patch.rating;
   if (patch.hours !== undefined) cols.hours = patch.hours;

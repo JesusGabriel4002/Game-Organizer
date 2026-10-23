@@ -25,6 +25,8 @@ export interface LibraryEntry {
   completedAt: string | null;
   /** Year the game was finished; `completedAt` is only set when the exact date is known. */
   completedYear: number | null;
+  /** Year the user wants to finish the game by. */
+  targetYear: number | null;
   notes: string;
   categoryIds: string[];
   createdAt: string;
@@ -34,9 +36,24 @@ export interface LibraryEntry {
 export type EntryPatch = Partial<
   Pick<
     LibraryEntry,
-    "status" | "platform" | "rating" | "hours" | "startedAt" | "completedAt" | "completedYear" | "notes" | "name" | "coverUrl"
+    | "status"
+    | "platform"
+    | "rating"
+    | "hours"
+    | "startedAt"
+    | "completedAt"
+    | "completedYear"
+    | "targetYear"
+    | "notes"
+    | "name"
+    | "coverUrl"
   >
 >;
+
+export interface AddOptions {
+  completion?: CompletionInput;
+  targetYear?: number | null;
+}
 
 export interface CompletionInput {
   year: number;

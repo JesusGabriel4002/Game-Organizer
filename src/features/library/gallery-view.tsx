@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { completionLabel } from "@/lib/completion";
+import { statusDetail } from "@/lib/completion";
 import { useCategories } from "@/lib/queries";
 import type { LibraryEntry } from "@/lib/types";
 import { Cover } from "@/components/game/cover";
@@ -23,7 +23,7 @@ export function GalleryView({ entries }: { entries: LibraryEntry[] }) {
           </div>
           <div className="space-y-1.5 p-2.5">
             <p className="truncate text-sm font-medium">{e.name}</p>
-            <StatusTag status={e.status} detail={e.status === "completed" ? completionLabel(e) : null} />
+            <StatusTag status={e.status} detail={statusDetail(e)} />
             <CategoryTags ids={e.categoryIds} categories={categories} max={2} />
           </div>
         </button>

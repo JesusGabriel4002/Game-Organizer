@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   CalendarClock,
   Clock,
+  Flag,
   Hash,
   Image,
   ListChecks,
@@ -23,7 +24,8 @@ import { useDeleteEntry, useEntry, useGoals, useSetEntryCategories, useUpdateEnt
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { targetYearOptions } from "@/lib/completion";
+import { Input, Select } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState, PageContainer } from "@/components/layout/page";
 import { Cover } from "@/components/game/cover";
@@ -165,6 +167,22 @@ export function GamePage() {
           <Property icon={<ListChecks />} label="Status">
             <StatusSelect value={entry.status} onChange={(status) => updateEntry({ entry, patch: { status } })} />
           </Property>
+          {entry.status !== "completed" && (
+            <Property icon={<Flag />} label="Zerar até">
+              <Select
+                value={entry.targetYear ?? ""}
+                onChange={(e) => updateEntry({ entry, patch: { targetYear: e.target.value ? Number(e.target.value) : null } })}
+                className="h-7 max-w-44 border-transparent bg-transparent hover:bg-accent"
+              >
+                <option value="">Sem prazo</option>
+                {targetYearOptions(entry.targetYear).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </Property>
+          )}
           <Property icon={<Tags />} label="Categorias">
             <CategoryPicker
               value={entry.categoryIds}

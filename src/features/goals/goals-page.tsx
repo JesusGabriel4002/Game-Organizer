@@ -3,7 +3,9 @@ import { AlertTriangle, CheckCircle2, Clock, MoreHorizontal, Pencil, Plus, Trash
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCategories, useDeleteGoal, useGoals, useLibrary } from "@/lib/queries";
-import type { Goal } from "@/lib/types";
+import { completionYear } from "@/lib/completion";
+import { STATUS_META } from "@/lib/constants";
+import type { Goal, LibraryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -98,6 +100,63 @@ function GoalCard({ goal, progress, onEdit }: { goal: Goal; progress: GoalProgre
   );
 }
 
+interface YearGoal {
+  year: number;
+  entries: LibraryEntry[];
+  done: number;
+  state: GoalState;
+}
+
+/** Games marked "zerar até <ano>", grouped by year. */
+function yearGoals(library: LibraryEntry[], currentYear = new Date().getFullYear()): YearGoal[] {
+  const years = [...new Set(library.flatMap((e) => e.targetYear ?? []))].sort((a, b) => a - b);
+  return years.map((year) => {
+    const entries = library.filter((e) => e.targetYear === year);
+    const finished = entries.filter((e) => e.status === "completed");
+    const late = finished.some((e) => (completionYear(e) ?? year) > year);
+    const state: GoalState =
+      finished.length === entries.length ? (late ? "late" : "done") : year < currentYear ? "failed" : "active";
+    return { year, entries, done: finished.length, state };
+  });
+}
+
+function YearGoalCard({ goal }: { goal: YearGoal }) {
+  const meta = STATE_META[goal.state];
+  const remaining = goal.entries.length - goal.done;
+  return (
+    <div className="rounded-lg border border-border p-4">
+      <div className={cn("mb-1 flex items-center gap-1.5 text-xs font-medium [&_svg]:size-3.5", meta.className)}>
+        {meta.icon}
+        {meta.label}
+      </div>
+      <h3 className="font-semibold leading-snug">Zerar até {goal.year}</h3>
+      <p className="mt-0.5 text-sm text-muted-foreground">
+        {remaining === 0 ? "Todos zerados" : `${remaining} ${remaining === 1 ? "jogo falta" : "jogos faltam"}`}
+      </p>
+      <div className="mt-3 flex items-center gap-3">
+        <Progress
+          value={(goal.done / goal.entries.length) * 100}
+          tone={goal.state === "done" ? "success" : goal.state === "failed" ? "danger" : "primary"}
+        />
+        <span className="shrink-0 text-sm font-medium tabular-nums">
+          {goal.done}/{goal.entries.length}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {goal.entries.map((e) => (
+          <Link key={e.id} to={`/game/${e.id}`} title={`${e.name} · ${STATUS_META[e.status].label}`}>
+            <Cover
+              url={e.coverUrl}
+              name={e.name}
+              className={cn("h-12 w-9 rounded-sm border border-border hover:opacity-80", e.status !== "completed" && "opacity-40")}
+            />
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function GoalsPage() {
   const { data: goals = [] } = useGoals();
   const { data: library = [] } = useLibrary();
@@ -107,6 +166,7 @@ export function GoalsPage() {
   const withProgress = useMemo(() => goals.map((g) => ({ goal: g, progress: computeProgress(g, library) })), [goals, library]);
   const active = withProgress.filter((g) => ["active", "behind"].includes(g.progress.state));
   const finished = withProgress.filter((g) => !["active", "behind"].includes(g.progress.state));
+  const byYear = useMemo(() => yearGoals(library), [library]);
 
   const openNew = () => {
     setEditing(undefined);
@@ -126,13 +186,29 @@ export function GoalsPage() {
         }
       />
 
+      {byYear.length > 0 && (
+        <>
+          <h2 className="mb-1 text-sm font-medium text-muted-foreground">Por ano</h2>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Jogos “Pra zerar” com um ano em “Zerar até”. Escolha o ano no menu da tag de status ou na página do jogo.
+          </p>
+          <div className="mb-8 grid gap-3 md:grid-cols-2">
+            {byYear.map((g) => (
+              <YearGoalCard key={g.year} goal={g} />
+            ))}
+          </div>
+        </>
+      )}
+
       {goals.length === 0 ? (
+        byYear.length > 0 ? null : (
         <EmptyState title="Nenhuma meta ainda">
           Que tal “Zerar 12 jogos em {new Date().getFullYear()}”?{" "}
           <button className="text-primary underline" onClick={openNew}>
             Criar a primeira meta
           </button>
         </EmptyState>
+        )
       ) : (
         <>
           <h2 className="mb-2 text-sm font-medium text-muted-foreground">Em andamento ({active.length})</h2>

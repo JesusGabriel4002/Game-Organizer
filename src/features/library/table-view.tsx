@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { completionLabel, completionSortKey } from "@/lib/completion";
+import { completionSortKey, statusDetail } from "@/lib/completion";
 import { COMMON_PLATFORMS } from "@/lib/constants";
 import { formatTimeToBeat, scoreOf } from "@/lib/igdb-info";
 import { useSetEntryCategories, useUpdateEntry } from "@/lib/queries";
@@ -139,8 +139,10 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
         cell: ({ row }) => (
           <StatusSelect
             value={row.original.status}
-            detail={completionLabel(row.original)}
+            detail={statusDetail(row.original)}
             onChange={(status) => updateEntry({ entry: row.original, patch: { status } })}
+            targetYear={row.original.targetYear}
+            onTargetYear={(targetYear) => updateEntry({ entry: row.original, patch: { targetYear } })}
           />
         ),
       }),

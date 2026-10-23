@@ -11,6 +11,8 @@ import { usePalette } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { STATUSES, type CompletionInput, type GameStatus, type IgdbGame } from "@/lib/types";
 import { cn, errorMessage } from "@/lib/utils";
+import { targetYearOptions } from "@/lib/completion";
+import { Label, Select } from "@/components/ui/input";
 import { CompletionEditor } from "@/components/game/completion-field";
 import { Cover } from "@/components/game/cover";
 
@@ -39,6 +41,7 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<GameStatus>("backlog");
   const [completion, setCompletion] = useState<CompletionInput>(emptyCompletion);
+  const [targetYear, setTargetYear] = useState<number | null>(null);
   const debounced = useDebounced(query.trim(), 350);
   const { data: library = [] } = useLibrary();
   const addFromIgdb = useAddFromIgdb();
@@ -64,6 +67,7 @@ export function CommandPalette() {
     if (!open) {
       setQuery("");
       setCompletion(emptyCompletion());
+      setTargetYear(null);
     }
   }, [open]);
 
@@ -76,11 +80,15 @@ export function CommandPalette() {
   const localMatches = q ? library.filter((e) => e.name.toLowerCase().includes(q)).slice(0, 5) : [];
 
   const finished = status === "completed" ? completion : undefined;
-  const addedAs = finished ? `zerado em ${finished.year}` : `em "${STATUS_META[status].label}"`;
+  const target = status === "backlog" ? targetYear : null;
+  const options = { completion: finished, targetYear: target };
+  const addedAs = finished
+    ? `zerado em ${finished.year}`
+    : `em "${STATUS_META[status].label}"${target ? `, para zerar até ${target}` : ""}`;
 
   const addIgdb = async (game: IgdbGame) => {
     try {
-      const { id, existed } = await addFromIgdb.mutateAsync({ game, status, completion: finished });
+      const { id, existed } = await addFromIgdb.mutateAsync({ game, status, options });
       toast.info(existed ? `${game.name} já estava na biblioteca.` : `${game.name} adicionado ${addedAs}.`);
       go(`/game/${id}`);
     } catch (err) {
@@ -91,7 +99,7 @@ export function CommandPalette() {
   const addCustom = async () => {
     const name = query.trim();
     if (!name) return;
-    const id = await addManual.mutateAsync({ name, status, completion: finished });
+    const id = await addManual.mutateAsync({ name, status, options });
     toast.info(`${name} adicionado manualmente ${addedAs}.`);
     go(`/game/${id}`);
   };
@@ -157,6 +165,27 @@ export function CommandPalette() {
                   value={completion}
                   onChange={(change) => setCompletion((prev) => ({ ...prev, ...change, year: change.year ?? prev.year }))}
                 />
+              </div>
+            )}
+
+            {status === "backlog" && (
+              <div className="flex items-center gap-2 border-b border-border px-3 py-2" onKeyDown={(e) => e.stopPropagation()}>
+                <Label htmlFor="target-year" className="shrink-0">
+                  Zerar até
+                </Label>
+                <Select
+                  id="target-year"
+                  value={targetYear ?? ""}
+                  onChange={(e) => setTargetYear(e.target.value ? Number(e.target.value) : null)}
+                  className="h-7 w-44"
+                >
+                  <option value="">Sem prazo</option>
+                  {targetYearOptions().map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
             )}
 
