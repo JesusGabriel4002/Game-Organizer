@@ -1,16 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { appConfigDir } from "@tauri-apps/api/path";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { CheckCircle2, ChevronRight, Download, ExternalLink, KeyRound, Loader2, Upload } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, Download, Upload } from "lucide-react";
 import { files, igdb } from "@/lib/api";
 import { exportBackup, getSetting, importBackup, setSetting, type Backup } from "@/lib/db";
 import { useUi, type Theme } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { errorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select } from "@/components/ui/input";
+import { Label, Select } from "@/components/ui/input";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 
 function Section({ title, description, children }: { title: string; description?: React.ReactNode; children: React.ReactNode }) {
@@ -24,102 +22,20 @@ function Section({ title, description, children }: { title: string; description?
 }
 
 function IgdbSection() {
-  const qc = useQueryClient();
   const status = useQuery({ queryKey: ["igdb-status"], queryFn: igdb.status, staleTime: 0 });
-  const [clientId, setClientId] = useState("");
-  const [clientSecret, setClientSecret] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      await igdb.saveCredentials(clientId, clientSecret);
-      setClientId("");
-      setClientSecret("");
-      setShowAdvanced(false);
-      toast.info("Chaves validadas e salvas neste computador.");
-      qc.invalidateQueries({ queryKey: ["igdb-status"] });
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const clear = async () => {
-    await igdb.clearCredentials();
-    qc.invalidateQueries({ queryKey: ["igdb-status"] });
-    toast.info("Chaves removidas.");
-  };
-
-  const showForm = showAdvanced || (status.isSuccess && !status.data.configured);
 
   return (
     <Section
       title="Busca de jogos (IGDB)"
-      description="O IGDB é a base de jogos da Twitch. A busca já funciona pelo servidor do Game Organizer, sem configurar nada."
+      description="O IGDB é a base de jogos da Twitch. A busca funciona pelo servidor do Game Organizer, sem configurar nada."
     >
-      {status.data?.configured && (
-        <div className="mb-4 flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm">
+      {status.data?.configured ? (
+        <div className="flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm">
           <CheckCircle2 className="size-4 text-[#4dab9a]" />
-          <span className="flex-1">
-            {status.data.source === "proxy"
-              ? "Usando o servidor de busca padrão"
-              : `Usando sua chave (${status.data.source === "env" ? "variáveis de ambiente" : "salva no app"}) · Client ID ${status.data.clientIdHint}`}
-          </span>
-          {status.data.source === "settings" && (
-            <Button size="sm" variant="destructive" onClick={clear}>
-              Remover
-            </Button>
-          )}
+          {status.data.source === "proxy" ? "Usando o servidor de busca padrão" : "Usando uma chave própria da Twitch"}
         </div>
-      )}
-      {!showForm && (
-        <button
-          onClick={() => setShowAdvanced(true)}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronRight className="size-4" />
-          Usar minha própria chave da Twitch (avançado)
-        </button>
-      )}
-      {showForm && (
-        <div className="grid max-w-md gap-3">
-          <p className="text-sm text-muted-foreground">
-            Opcional. Crie um app grátis em{" "}
-            <button className="text-primary underline" onClick={() => openUrl("https://dev.twitch.tv/console/apps")}>
-              dev.twitch.tv/console/apps <ExternalLink className="inline size-3" />
-            </button>{" "}
-            (OAuth Redirect URL <code>http://localhost</code>, categoria "Application Integration") e cole o Client ID e o
-            Client Secret. Elas ficam salvas só neste PC e passam a ter prioridade sobre o servidor padrão.
-          </p>
-          <div className="grid gap-1">
-            <Label htmlFor="client-id">Client ID</Label>
-            <Input id="client-id" value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" />
-          </div>
-          <div className="grid gap-1">
-            <Label htmlFor="client-secret">Client Secret</Label>
-            <Input
-              id="client-secret"
-              type="password"
-              value={clientSecret}
-              onChange={(e) => setClientSecret(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-          <div>
-            <Button variant="default" onClick={save} disabled={saving || !clientId || !clientSecret}>
-              {saving ? <Loader2 className="animate-spin" /> : <KeyRound />}
-              Validar e salvar
-            </Button>
-            {showAdvanced && (
-              <Button variant="ghost" className="ml-1" onClick={() => setShowAdvanced(false)}>
-                Cancelar
-              </Button>
-            )}
-          </div>
-        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">Servidor de busca indisponível no momento.</p>
       )}
     </Section>
   );
