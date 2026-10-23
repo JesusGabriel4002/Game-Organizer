@@ -10,6 +10,7 @@ import { errorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/input";
 import { PageContainer, PageHeader } from "@/components/layout/page";
+import { CsvImportButton } from "./csv-import";
 
 function Section({ title, description, children }: { title: string; description?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -118,6 +119,14 @@ export function SettingsPage() {
       </Section>
 
       <IgdbSection />
+
+      <Section
+        title="Importar lista de jogos"
+        description="Traga sua lista de uma planilha (Excel, Google Sheets...) salva como CSV. Clique no botão para ver o modelo."
+      >
+        <CsvImportButton />
+      </Section>
+
       <BackupSection />
 
       <Section title="Dados locais" description="Seu banco SQLite e as chaves ficam nesta pasta (fora do repositório):">
