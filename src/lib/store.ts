@@ -5,7 +5,7 @@ export type Theme = "light" | "dark" | "system";
 export type ViewMode = "table" | "board" | "gallery";
 
 /** Table columns after "Nome", which is always first. */
-export const DEFAULT_TABLE_COLUMNS = ["status", "completion", "categories", "timeToBeat"];
+export const DEFAULT_TABLE_COLUMNS = ["status", "categories", "timeToBeat"];
 
 interface UiState {
   theme: Theme;

@@ -21,12 +21,14 @@ export function Tag({ color, children, className }: { color: TagColor; children:
   );
 }
 
-export function StatusTag({ status }: { status: GameStatus }) {
+/** `detail` is shown inside the tag, e.g. when a game was finished: "Zerado · 2026". */
+export function StatusTag({ status, detail }: { status: GameStatus; detail?: string | null }) {
   const meta = STATUS_META[status];
   return (
     <Tag color={meta.color}>
       <span className={cn("size-1.5 rounded-full", meta.dot)} />
       {meta.label}
+      {detail && <span className="opacity-70">· {detail}</span>}
     </Tag>
   );
 }
@@ -34,10 +36,12 @@ export function StatusTag({ status }: { status: GameStatus }) {
 export function StatusSelect({
   value,
   onChange,
+  detail,
   className,
 }: {
   value: GameStatus;
   onChange: (status: GameStatus) => void;
+  detail?: string | null;
   className?: string;
 }) {
   return (
@@ -46,7 +50,7 @@ export function StatusSelect({
         className={cn("flex items-center gap-1 rounded-sm px-1 py-0.5 outline-none hover:bg-accent", className)}
         onClick={(e) => e.stopPropagation()}
       >
-        <StatusTag status={value} />
+        <StatusTag status={value} detail={value === "completed" ? detail : null} />
       </DropdownMenuTrigger>
       <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
         {STATUSES.map((s) => (
