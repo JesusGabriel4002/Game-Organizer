@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { appConfigDir } from "@tauri-apps/api/path";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { CheckCircle2, Download, ExternalLink, KeyRound, Loader2, Upload } from "lucide-react";
+import { CheckCircle2, ChevronRight, Download, ExternalLink, KeyRound, Loader2, Upload } from "lucide-react";
 import { useState } from "react";
 import { files, igdb } from "@/lib/api";
 import { exportBackup, getSetting, importBackup, setSetting, type Backup } from "@/lib/db";
@@ -29,6 +29,7 @@ function IgdbSection() {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const save = async () => {
     setSaving(true);
@@ -36,6 +37,7 @@ function IgdbSection() {
       await igdb.saveCredentials(clientId, clientSecret);
       setClientId("");
       setClientSecret("");
+      setShowAdvanced(false);
       toast.info("Chaves validadas e salvas neste computador.");
       qc.invalidateQueries({ queryKey: ["igdb-status"] });
     } catch (err) {
@@ -51,20 +53,12 @@ function IgdbSection() {
     toast.info("Chaves removidas.");
   };
 
+  const showForm = showAdvanced || (status.isSuccess && !status.data.configured);
+
   return (
     <Section
       title="Busca de jogos (IGDB)"
-      description={
-        <>
-          O IGDB é a base de jogos da Twitch. A busca já funciona pelo servidor padrão do Game Organizer, sem
-          configurar nada. Se preferir usar sua própria chave (opcional), crie um app grátis em{" "}
-          <button className="text-primary underline" onClick={() => openUrl("https://dev.twitch.tv/console/apps")}>
-            dev.twitch.tv/console/apps <ExternalLink className="inline size-3" />
-          </button>{" "}
-          (OAuth Redirect URL: <code>http://localhost</code>, categoria "Application Integration") e cole o Client ID e
-          o Client Secret aqui. Elas ficam salvas só neste PC, fora do repositório.
-        </>
-      }
+      description="O IGDB é a base de jogos da Twitch. A busca já funciona pelo servidor do Game Organizer, sem configurar nada."
     >
       {status.data?.configured && (
         <div className="mb-4 flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm">
@@ -81,28 +75,52 @@ function IgdbSection() {
           )}
         </div>
       )}
-      <div className="grid max-w-md gap-3">
-        <div className="grid gap-1">
-          <Label htmlFor="client-id">Client ID</Label>
-          <Input id="client-id" value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" />
+      {!showForm && (
+        <button
+          onClick={() => setShowAdvanced(true)}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ChevronRight className="size-4" />
+          Usar minha própria chave da Twitch (avançado)
+        </button>
+      )}
+      {showForm && (
+        <div className="grid max-w-md gap-3">
+          <p className="text-sm text-muted-foreground">
+            Opcional. Crie um app grátis em{" "}
+            <button className="text-primary underline" onClick={() => openUrl("https://dev.twitch.tv/console/apps")}>
+              dev.twitch.tv/console/apps <ExternalLink className="inline size-3" />
+            </button>{" "}
+            (OAuth Redirect URL <code>http://localhost</code>, categoria "Application Integration") e cole o Client ID e o
+            Client Secret. Elas ficam salvas só neste PC e passam a ter prioridade sobre o servidor padrão.
+          </p>
+          <div className="grid gap-1">
+            <Label htmlFor="client-id">Client ID</Label>
+            <Input id="client-id" value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" />
+          </div>
+          <div className="grid gap-1">
+            <Label htmlFor="client-secret">Client Secret</Label>
+            <Input
+              id="client-secret"
+              type="password"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Button variant="default" onClick={save} disabled={saving || !clientId || !clientSecret}>
+              {saving ? <Loader2 className="animate-spin" /> : <KeyRound />}
+              Validar e salvar
+            </Button>
+            {showAdvanced && (
+              <Button variant="ghost" className="ml-1" onClick={() => setShowAdvanced(false)}>
+                Cancelar
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="grid gap-1">
-          <Label htmlFor="client-secret">Client Secret</Label>
-          <Input
-            id="client-secret"
-            type="password"
-            value={clientSecret}
-            onChange={(e) => setClientSecret(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-        <div>
-          <Button variant="default" onClick={save} disabled={saving || !clientId || !clientSecret}>
-            {saving ? <Loader2 className="animate-spin" /> : <KeyRound />}
-            Validar e salvar
-          </Button>
-        </div>
-      </div>
+      )}
     </Section>
   );
 }

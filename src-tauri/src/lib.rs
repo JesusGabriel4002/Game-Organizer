@@ -4,11 +4,20 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 
 pub const DB_URL: &str = "sqlite:games.db";
 
+/// sqlx checksums the exact SQL text, so line endings must not depend on how the repo was checked out.
+fn normalized(sql: &'static str) -> &'static str {
+    if sql.contains('\r') {
+        Box::leak(sql.replace("\r\n", "\n").into_boxed_str())
+    } else {
+        sql
+    }
+}
+
 fn migrations() -> Vec<Migration> {
     vec![Migration {
         version: 1,
         description: "init",
-        sql: include_str!("../migrations/001_init.sql"),
+        sql: normalized(include_str!("../migrations/001_init.sql")),
         kind: MigrationKind::Up,
     }]
 }
