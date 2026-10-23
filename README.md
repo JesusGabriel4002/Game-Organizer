@@ -4,6 +4,8 @@ Aplicativo desktop (Windows) com visual estilo Notion para organizar seus jogos:
 
 Tudo fica salvo localmente num banco SQLite. Nenhum dado ou chave vai para a nuvem ou para o repositório.
 
+Licença [MIT](LICENSE) · [Code signing policy](#code-signing-policy) · [Privacidade](#privacidade)
+
 ## Funcionalidades
 
 - Biblioteca com três visualizações: **tabela** (edição direto na célula), **board** kanban (arraste para mudar o status) e **galeria** de capas.
@@ -26,10 +28,11 @@ Tauri 2 (Rust) + React 19 + TypeScript + Vite, Tailwind CSS 4 com componentes no
 
 Baixe o instalador mais recente na página de [Releases](https://github.com/JesusGabriel4002/Game-Organizer/releases/latest):
 
-- `Game.Organizer_X.Y.Z_x64-setup.exe`: instalador recomendado.
-- `Game.Organizer_X.Y.Z_x64_en-US.msi`: instalador MSI (alternativo).
+- `Game.Organizer_X.Y.Z_x64-setup.exe`: o instalador.
 
-Se o Windows SmartScreen avisar na primeira execução, clique em **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece porque o app ainda não tem assinatura digital.
+Se o Windows SmartScreen avisar na primeira execução, clique em **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece enquanto o instalador não tiver assinatura digital (veja [Code signing policy](#code-signing-policy)).
+
+**Desinstalar:** Configurações do Windows → Aplicativos → Aplicativos instalados → Game Organizer → Desinstalar. Seus dados ficam em `%APPDATA%\com.gameorganizer.app`; apague essa pasta se quiser remover tudo.
 
 ## Pré-requisitos para desenvolver (Windows)
 
@@ -50,15 +53,14 @@ O build local gera:
 
 | Arquivo | Caminho |
 | --- | --- |
-| Instalador NSIS | `src-tauri/target/release/bundle/nsis/Game Organizer_X.Y.Z_x64-setup.exe` |
-| Instalador MSI | `src-tauri/target/release/bundle/msi/Game Organizer_X.Y.Z_x64_en-US.msi` |
+| Instalador | `src-tauri/target/release/bundle/nsis/Game Organizer_X.Y.Z_x64-setup.exe` |
 | Executável sem instalação | `src-tauri/target/release/game-organizer.exe` |
 
 A pasta `target/` está no `.gitignore`, então os compilados não vão para o repositório. Eles são distribuídos pelas Releases.
 
 ## Publicando uma nova versão
 
-As releases são automáticas. O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) roda no GitHub Actions sempre que uma tag `v*` é enviada. Ele compila o app num runner Windows e cria a release com os dois instaladores anexados.
+As releases são automáticas. O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) roda no GitHub Actions sempre que uma tag `v*` é enviada. Ele compila o app num runner Windows hospedado pelo GitHub e cria a release com o instalador anexado. Se a assinatura pela SignPath estiver configurada, o instalador é assinado antes de ser publicado (veja [Code signing policy](#code-signing-policy)).
 
 1. Atualize a versão nos três arquivos de uma vez (`package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`):
 
@@ -74,16 +76,18 @@ As releases são automáticas. O workflow [`.github/workflows/release.yml`](.git
    git push origin main --tags
    ```
 
-3. Acompanhe a compilação na aba **Actions** do GitHub (leva uns 10 minutos). Quando terminar, a release `v0.2.0` aparece em **Releases** com os instaladores.
+3. Acompanhe a compilação na aba **Actions** do GitHub (leva uns 10 minutos). Com a assinatura ativa, aprove o pedido de assinatura no painel da SignPath quando ele aparecer; o workflow espera até 1 hora pela aprovação. Ao terminar, a release `v0.2.0` aparece em **Releases** com o instalador.
 
-A versão da tag precisa ser igual à dos arquivos, porque o nome dos instaladores usa a versão do `tauri.conf.json`. Para corrigir uma release com problema, apague a release e a tag no GitHub (`gh release delete v0.2.0 --cleanup-tag`) e repita o passo 2.
+A versão da tag precisa ser igual à dos arquivos; o workflow falha logo no início se não for. Para corrigir uma release com problema, apague a release e a tag no GitHub (`gh release delete v0.2.0 --cleanup-tag`) e repita o passo 2.
 
 ### Publicando manualmente (sem Actions)
 
 ```bash
 npm run tauri build
-gh release create v0.2.0 "src-tauri/target/release/bundle/nsis/Game Organizer_0.2.0_x64-setup.exe" "src-tauri/target/release/bundle/msi/Game Organizer_0.2.0_x64_en-US.msi" --title "Game Organizer v0.2.0" --generate-notes
+gh release create v0.2.0 "src-tauri/target/release/bundle/nsis/Game Organizer_0.2.0_x64-setup.exe" --title "Game Organizer v0.2.0" --generate-notes
 ```
+
+Builds manuais nunca são assinados: a SignPath só assina o que foi compilado pelo GitHub Actions.
 
 ## Busca de jogos (IGDB)
 
@@ -135,6 +139,42 @@ Para trocar uma chave vazada, gere um novo secret na Twitch e rode `npx wrangler
 
 O `.gitignore` bloqueia `.env`, `*.db`, `*.sqlite`, `igdb.json` e arquivos de backup, para nada pessoal ir parar no GitHub.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- Committers and reviewers: [JesusGabriel4002](https://github.com/JesusGabriel4002)
+- Approvers: [JesusGabriel4002](https://github.com/JesusGabriel4002)
+
+Somente instaladores compilados pelo GitHub Actions a partir deste repositório são assinados, e cada release precisa de aprovação manual. Todos os membros do projeto usam autenticação em dois fatores no GitHub e na SignPath.
+
+> Status: o cadastro na SignPath Foundation está em análise. Até ser aprovado, as releases são publicadas sem assinatura.
+
+### Configurando a assinatura (mantenedores)
+
+1. Leia as [condições da SignPath Foundation](https://signpath.org/terms) e envie o projeto pelo formulário em [signpath.org/apply](https://signpath.org/apply). Ative a verificação em duas etapas no GitHub antes.
+2. Depois de aprovado, no painel da SignPath:
+   - instale o **SignPath GitHub App** no repositório e vincule o *Trusted Build System* **GitHub.com** ao projeto;
+   - crie a *Artifact Configuration* colando o conteúdo de [`.signpath/artifact-configuration.xml`](.signpath/artifact-configuration.xml);
+   - crie a *Signing Policy* (por exemplo `release-signing`) e um usuário de CI com permissão de *submitter*, e gere o API token dele.
+3. No GitHub, em **Settings → Secrets and variables → Actions**:
+   - Secret `SIGNPATH_API_TOKEN`: o API token do usuário de CI;
+   - Variable `SIGNPATH_ORGANIZATION_ID`: o ID da organização na SignPath;
+   - Variables opcionais `SIGNPATH_PROJECT_SLUG` (padrão `Game-Organizer`) e `SIGNPATH_POLICY_SLUG` (padrão `release-signing`).
+
+Com o secret e a variável cadastrados, a próxima tag `v*` já sai assinada. O SmartScreen ainda pode avisar nas primeiras versões assinadas, até o certificado acumular reputação, mas o aviso passa a mostrar "SignPath Foundation" como editor verificado.
+
+## Privacidade
+
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
+
+Na prática:
+
+- Jogos, categorias, metas e anotações ficam apenas no seu computador (`%APPDATA%\com.gameorganizer.app`).
+- Quando você busca um jogo, o termo digitado é enviado ao servidor de busca do projeto (Cloudflare Worker), que consulta o [IGDB](https://www.igdb.com). Valem as políticas de privacidade da [Cloudflare](https://www.cloudflare.com/privacypolicy/) e da [Twitch/IGDB](https://www.twitch.tv/p/legal/privacy-notice/). O servidor não guarda nenhum dado pessoal; ele só mantém um cache de 24 horas dos resultados por termo buscado.
+- As capas dos jogos são carregadas de `images.igdb.com`.
+- Não há telemetria, contas, anúncios nem rastreamento.
+
 ## Estrutura
 
 ```
@@ -150,7 +190,9 @@ worker/
 scripts/
   bump-version.mjs atualiza a versão nos três arquivos de configuração
 .github/workflows/
-  release.yml      compila e publica a release quando uma tag v* é enviada
+  release.yml      compila, assina (SignPath) e publica a release quando uma tag v* é enviada
+.signpath/
+  artifact-configuration.xml  o que a SignPath assina e quais metadados confere
 ```
 
 ## Próximos passos

@@ -3,6 +3,8 @@ name = "game-organizer"
 version = "0.2.0"
 description = "Organizador pessoal de jogos"
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/JesusGabriel4002/Game-Organizer"
 
 [lib]
 name = "game_organizer_lib"
