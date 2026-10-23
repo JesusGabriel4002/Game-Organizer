@@ -71,8 +71,10 @@ export function StatsPage() {
     const byPlatform = [...platformCounts.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
     const rated = library.filter((e) => e.rating !== null);
     const avgRating = rated.length ? rated.reduce((s, e) => s + (e.rating ?? 0), 0) / rated.length : null;
-    const hours = library.reduce((s, e) => s + (e.hours ?? 0), 0);
-    const hoursInYear = completedInYear.reduce((s, e) => s + (e.hours ?? 0), 0);
+    // IGDB's average time to beat (seconds → hours); user-entered hours are ignored here.
+    const avgHours = (e: (typeof completed)[number]) => (e.timeToBeat ? e.timeToBeat / 3600 : 0);
+    const hours = completed.reduce((s, e) => s + avgHours(e), 0);
+    const hoursInYear = completedInYear.reduce((s, e) => s + avgHours(e), 0);
     const topRated = [...rated].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 5);
     const recent = [...completedInYear].sort((a, b) => completionSortKey(b).localeCompare(completionSortKey(a))).slice(0, 8);
     return { completed, completedInYear, years, perMonth, byCategory, byPlatform, avgRating, hours, hoursInYear, topRated, recent };
@@ -106,8 +108,8 @@ export function StatsPage() {
             <StatCard label="Zerados (total)" value={stats.completed.length} />
             <StatCard label="Jogando" value={count("playing")} />
             <StatCard label="Pra zerar" value={count("backlog")} />
-            <StatCard label="Horas registradas" value={fmt(stats.hours)} />
-            <StatCard label="Nota média" value={stats.avgRating !== null ? `${fmt(stats.avgRating)}/10` : "–"} />
+            <StatCard label="Horas registradas" value={fmt(stats.hours)} sub="média IGDB dos zerados" />
+            <StatCard label="Nota média" value={stats.avgRating !== null ? `${fmt(stats.avgRating)}/5` : "–"} />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -184,7 +186,7 @@ export function StatsPage() {
                       <li key={e.id}>
                         <Link to={`/game/${e.id}`} className="flex items-center gap-2 rounded-md px-1 py-0.5 text-sm hover:bg-accent">
                           <span className="flex-1 truncate">{e.name}</span>
-                          <span className="tabular-nums text-muted-foreground">{e.rating}/10</span>
+                          <span className="tabular-nums text-muted-foreground">{e.rating}/5</span>
                         </Link>
                       </li>
                     ))}

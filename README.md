@@ -14,14 +14,14 @@ Licença [MIT](LICENSE) · [Code signing policy](#code-signing-policy) · [Priva
 - Nota da crítica (selo no estilo Metacritic na capa) e tempo médio para zerar, puxados do IGDB em segundo plano.
 - Categorias automáticas a partir das palavras-chave do IGDB: Soulslike, Metroidvania, Roguelike, Cozy, JRPG, Survival horror, Mundo aberto e mais (regras em [`src/lib/auto-categories.ts`](src/lib/auto-categories.ts)). Pode ser desligado na tela de Categorias.
 - Categorias com cores, filtros por categoria e plataforma, e categorização automática pelos gêneros do IGDB (ex.: todos os jogos "Indie" viram "Indies").
-- Página de cada jogo com status, nota (0 a 10), horas, datas de início e de quando zerou, e anotações em texto rico.
+- Página de cada jogo com status, nota (1 a 5 estrelas), horas, datas de início e de quando zerou, e anotações em texto rico.
 - Metas:
   - "zerar até" um ano em cada jogo "Pra zerar" (este ano, ano que vem...), escolhido ao adicionar, na tag de status ou na página do jogo, com o progresso de cada ano na tela de Metas;
   - zerar um jogo até uma data (ex.: até 15/03/2026);
   - zerar um jogo em um ano (ex.: em 2026);
   - zerar N jogos em um ano ou período, opcionalmente de uma categoria (ex.: 5 indies em 2026), com ritmo necessário por mês.
 - Estatísticas: zerados por mês, por categoria, por plataforma, horas e notas.
-- Importar uma lista de jogos de um CSV (Configurações → Importar CSV). Só a coluna `nome` é obrigatória; `status`, `ano`, `plataforma`, `nota` e `horas` são opcionais. Cada jogo é buscado no IGDB, cerca de 2 por segundo para respeitar o limite da API.
+- Exportar e importar a lista de jogos em CSV (Configurações). Só a coluna `nome` é obrigatória na importação; `status`, `ano`, `plataforma`, `nota` e `horas` são opcionais. Cada jogo importado é buscado no IGDB, cerca de 2 por segundo para respeitar o limite da API.
 - Backup e restauração em JSON (sem as chaves de API).
 - Tema claro e escuro.
 

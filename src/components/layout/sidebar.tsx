@@ -1,5 +1,7 @@
 import {
   BarChart3,
+  ChevronDown,
+  ChevronUp,
   ChevronsLeft,
   ChevronsRight,
   CircleCheck,
@@ -14,6 +16,7 @@ import {
   Tags,
   Target,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { TAG_COLORS } from "@/lib/constants";
 import { useCategories, useLibrary } from "@/lib/queries";
@@ -52,6 +55,8 @@ function Item({
   );
 }
 
+const SIDEBAR_CATEGORY_LIMIT = 5;
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="mb-1 mt-4 px-2 text-xs font-medium text-muted-foreground">{children}</div>;
 }
@@ -62,7 +67,17 @@ export function Sidebar() {
   const { theme, setTheme, sidebarCollapsed, toggleSidebar } = useUi();
   const setPaletteOpen = usePalette((s) => s.setOpen);
 
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
   const count = (status: GameStatus) => library.filter((e) => e.status === status).length;
+  const rankedCategories = useMemo(
+    () =>
+      categories
+        .map((category) => ({ category, count: library.filter((e) => e.categoryIds.includes(category.id)).length }))
+        .sort((a, b) => b.count - a.count || a.category.name.localeCompare(b.category.name, "pt-BR")),
+    [categories, library],
+  );
+  const visibleCategories = showAllCategories ? rankedCategories : rankedCategories.slice(0, SIDEBAR_CATEGORY_LIMIT);
   const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   if (sidebarCollapsed) {
@@ -114,15 +129,24 @@ export function Sidebar() {
             <Plus className="size-3.5" />
           </NavLink>
         </div>
-        {categories.map((c) => (
+        {visibleCategories.map(({ category: c, count }) => (
           <Item
             key={c.id}
             to={`/category/${c.id}`}
             icon={<span className={cn("ml-1 mr-1 size-2 rounded-full", TAG_COLORS[c.color].dot)} />}
             label={c.name}
-            count={library.filter((e) => e.categoryIds.includes(c.id)).length}
+            count={count}
           />
         ))}
+        {rankedCategories.length > SIDEBAR_CATEGORY_LIMIT && (
+          <button
+            onClick={() => setShowAllCategories((v) => !v)}
+            className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-sm text-muted-foreground hover:bg-accent [&_svg]:size-4"
+          >
+            {showAllCategories ? <ChevronUp /> : <ChevronDown />}
+            {showAllCategories ? "Mostrar menos" : `Mostrar mais (${rankedCategories.length - SIDEBAR_CATEGORY_LIMIT})`}
+          </button>
+        )}
         <Item to="/categories" icon={<Tags />} label="Gerenciar categorias" />
       </nav>
 

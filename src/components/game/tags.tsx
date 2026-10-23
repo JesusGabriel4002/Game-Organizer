@@ -90,17 +90,58 @@ export function StatusSelect({
   );
 }
 
-export function CategoryTags({ ids, categories, max }: { ids: string[]; categories: Category[]; max?: number }) {
-  const list = ids.map((id) => categories.find((c) => c.id === id)).filter((c): c is Category => !!c);
-  const shown = max ? list.slice(0, max) : list;
+/** Two tag rows (h-5 + gap-1 + h-5); used so every table row shares the same height. */
+export const CATEGORY_TAGS_TWO_LINES = "h-[2.75rem]";
+
+function TagRow({ items }: { items: Category[] }) {
+  // shrink-0 + nowrap: tags keep their size; the cell clips what doesn't fit.
   return (
-    <div className="flex min-w-0 flex-wrap gap-1">
-      {shown.map((c) => (
-        <Tag key={c.id} color={c.color}>
+    <div className="flex flex-nowrap gap-1">
+      {items.map((c) => (
+        <Tag key={c.id} color={c.color} className="max-w-none shrink-0">
           {c.name}
         </Tag>
       ))}
-      {max && list.length > max && <span className="text-xs text-muted-foreground">+{list.length - max}</span>}
+    </div>
+  );
+}
+
+export function CategoryTags({
+  ids,
+  categories,
+  max,
+  className,
+  /** From this many tags on, use two rows (2 → one per row; 3+ → first two, then the rest). */
+  wrapAt,
+}: {
+  ids: string[];
+  categories: Category[];
+  max?: number;
+  className?: string;
+  wrapAt?: number;
+}) {
+  const list = ids.map((id) => categories.find((c) => c.id === id)).filter((c): c is Category => !!c);
+  const shown = max ? list.slice(0, max) : list;
+  const extra = max && list.length > max ? list.length - max : 0;
+  const split = wrapAt !== undefined && shown.length >= wrapAt;
+  // 2 tags → 1+1; 3 or more → 2 on the first row, rest on the second.
+  const firstCount = split ? (shown.length === 2 ? 1 : 2) : shown.length;
+
+  return (
+    <div className={cn(split ? "flex flex-col gap-1" : "flex flex-nowrap content-start gap-1", className)}>
+      {split ? (
+        <>
+          <TagRow items={shown.slice(0, firstCount)} />
+          <TagRow items={shown.slice(firstCount)} />
+        </>
+      ) : (
+        shown.map((c) => (
+          <Tag key={c.id} color={c.color} className="max-w-none shrink-0">
+            {c.name}
+          </Tag>
+        ))
+      )}
+      {extra > 0 && <span className="shrink-0 text-xs text-muted-foreground">+{extra}</span>}
     </div>
   );
 }
@@ -110,11 +151,13 @@ export function CategoryPicker({
   onChange,
   className,
   placeholder = "Vazio",
+  wrapAt,
 }: {
   value: string[];
   onChange: (ids: string[]) => void;
   className?: string;
   placeholder?: string;
+  wrapAt?: number;
 }) {
   const { data: categories = [] } = useCategories();
   const createCategory = useCreateCategory();
@@ -139,7 +182,7 @@ export function CategoryPicker({
         onClick={(e) => e.stopPropagation()}
       >
         {value.length ? (
-          <CategoryTags ids={value} categories={categories} />
+          <CategoryTags ids={value} categories={categories} wrapAt={wrapAt} />
         ) : (
           <span className="text-sm text-muted-foreground">{placeholder}</span>
         )}
