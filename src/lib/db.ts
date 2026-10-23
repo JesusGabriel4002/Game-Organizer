@@ -1,6 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
 import { newId, nowIso, parseJsonArray } from "./utils";
-import type { Category, EntryPatch, GameStatus, Goal, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
+import type { Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
 
 const DB_URL = "sqlite:games.db";
 
@@ -38,6 +38,7 @@ interface EntryRow {
   hours: number | null;
   started_at: string | null;
   completed_at: string | null;
+  completed_year: number | null;
   notes: string;
   category_ids: string | null;
   created_at: string;
@@ -46,7 +47,7 @@ interface EntryRow {
 
 const ENTRY_SELECT = `
   SELECT ug.id, ug.game_id, g.igdb_id, g.name, g.cover_url, g.release_year, g.genres, g.platforms, g.summary,
-         ug.status, ug.platform, ug.rating, ug.hours, ug.started_at, ug.completed_at, ug.notes,
+         ug.status, ug.platform, ug.rating, ug.hours, ug.started_at, ug.completed_at, ug.completed_year, ug.notes,
          ug.created_at, ug.updated_at,
          (SELECT group_concat(ugc.category_id) FROM user_game_categories ugc
             JOIN categories c ON c.id = ugc.category_id AND c.deleted_at IS NULL
@@ -72,6 +73,7 @@ function toEntry(r: EntryRow): LibraryEntry {
     hours: r.hours,
     startedAt: r.started_at,
     completedAt: r.completed_at,
+    completedYear: r.completed_year,
     notes: r.notes ?? "",
     categoryIds: r.category_ids ? r.category_ids.split(",") : [],
     createdAt: r.created_at,
@@ -91,28 +93,44 @@ export async function getEntry(id: string): Promise<LibraryEntry | null> {
   return rows[0] ? toEntry(rows[0]) : null;
 }
 
-function statusDates(status: GameStatus) {
+function yearOf(date: string) {
+  return Number(date.slice(0, 4));
+}
+
+function statusDates(status: GameStatus, completion?: CompletionInput) {
+  if (status === "completed" && completion) {
+    return {
+      started_at: completion.startedAt,
+      completed_at: completion.completedAt,
+      completed_year: completion.completedAt ? yearOf(completion.completedAt) : completion.year,
+    };
+  }
   return {
     started_at: status === "backlog" ? null : today(),
     completed_at: status === "completed" ? today() : null,
+    completed_year: status === "completed" ? new Date().getFullYear() : null,
   };
 }
 
-async function insertUserGame(gameId: string, status: GameStatus, platform: string | null) {
+async function insertUserGame(gameId: string, status: GameStatus, platform: string | null, completion?: CompletionInput) {
   const db = await getDb();
   const id = newId();
-  const dates = statusDates(status);
+  const dates = statusDates(status, completion);
   const now = nowIso();
   await db.execute(
-    `INSERT INTO user_games (id, game_id, status, platform, started_at, completed_at, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`,
-    [id, gameId, status, platform, dates.started_at, dates.completed_at, now],
+    `INSERT INTO user_games (id, game_id, status, platform, started_at, completed_at, completed_year, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)`,
+    [id, gameId, status, platform, dates.started_at, dates.completed_at, dates.completed_year, now],
   );
   return id;
 }
 
 /** Returns the library entry id; reuses an existing entry if the game is already in the library. */
-export async function addFromIgdb(game: IgdbGame, status: GameStatus): Promise<{ id: string; existed: boolean }> {
+export async function addFromIgdb(
+  game: IgdbGame,
+  status: GameStatus,
+  completion?: CompletionInput,
+): Promise<{ id: string; existed: boolean }> {
   const db = await getDb();
   const now = nowIso();
   const existing = await db.select<{ id: string }[]>("SELECT id FROM games WHERE igdb_id = $1", [game.igdbId]);
@@ -138,15 +156,15 @@ export async function addFromIgdb(game: IgdbGame, status: GameStatus): Promise<{
     );
   }
   const platform = game.platforms.length === 1 ? game.platforms[0] : null;
-  return { id: await insertUserGame(gameId, status, platform), existed: false };
+  return { id: await insertUserGame(gameId, status, platform, completion), existed: false };
 }
 
-export async function addManual(name: string, status: GameStatus): Promise<string> {
+export async function addManual(name: string, status: GameStatus, completion?: CompletionInput): Promise<string> {
   const db = await getDb();
   const gameId = newId();
   const now = nowIso();
   await db.execute("INSERT INTO games (id, name, created_at, updated_at) VALUES ($1, $2, $3, $3)", [gameId, name.trim(), now]);
-  return insertUserGame(gameId, status, null);
+  return insertUserGame(gameId, status, null, completion);
 }
 
 export async function updateEntry(id: string, patch: EntryPatch, current?: LibraryEntry) {
@@ -156,15 +174,33 @@ export async function updateEntry(id: string, patch: EntryPatch, current?: Libra
   if (patch.status !== undefined) {
     cols.status = patch.status;
     // Fill in dates automatically on status changes unless the caller set them.
-    if (patch.status === "completed" && patch.completedAt === undefined && !current?.completedAt) cols.completed_at = today();
+    const setsCompletion = patch.completedAt !== undefined || patch.completedYear !== undefined;
+    const hasCompletion = !!current?.completedAt || current?.completedYear != null;
+    if (patch.status === "completed" && !setsCompletion && !hasCompletion) {
+      cols.completed_at = today();
+      cols.completed_year = new Date().getFullYear();
+    }
     if (patch.status !== "backlog" && patch.startedAt === undefined && !current?.startedAt) cols.started_at = today();
-    if (patch.status !== "completed" && patch.completedAt === undefined) cols.completed_at = null;
+    if (patch.status !== "completed" && !setsCompletion) {
+      cols.completed_at = null;
+      cols.completed_year = null;
+    }
   }
   if (patch.platform !== undefined) cols.platform = patch.platform || null;
   if (patch.rating !== undefined) cols.rating = patch.rating;
   if (patch.hours !== undefined) cols.hours = patch.hours;
   if (patch.startedAt !== undefined) cols.started_at = patch.startedAt || null;
-  if (patch.completedAt !== undefined) cols.completed_at = patch.completedAt || null;
+  if (patch.completedYear !== undefined) {
+    cols.completed_year = patch.completedYear;
+    // An exact date from another year would contradict the new year.
+    if (patch.completedAt === undefined && current?.completedAt && yearOf(current.completedAt) !== patch.completedYear) {
+      cols.completed_at = null;
+    }
+  }
+  if (patch.completedAt !== undefined) {
+    cols.completed_at = patch.completedAt || null;
+    if (patch.completedAt) cols.completed_year = yearOf(patch.completedAt);
+  }
   if (patch.notes !== undefined) cols.notes = patch.notes;
 
   const keys = Object.keys(cols);

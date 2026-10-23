@@ -18,6 +18,8 @@ export interface LibraryEntry {
   hours: number | null;
   startedAt: string | null;
   completedAt: string | null;
+  /** Year the game was finished; `completedAt` is only set when the exact date is known. */
+  completedYear: number | null;
   notes: string;
   categoryIds: string[];
   createdAt: string;
@@ -25,8 +27,17 @@ export interface LibraryEntry {
 }
 
 export type EntryPatch = Partial<
-  Pick<LibraryEntry, "status" | "platform" | "rating" | "hours" | "startedAt" | "completedAt" | "notes" | "name" | "coverUrl">
+  Pick<
+    LibraryEntry,
+    "status" | "platform" | "rating" | "hours" | "startedAt" | "completedAt" | "completedYear" | "notes" | "name" | "coverUrl"
+  >
 >;
+
+export interface CompletionInput {
+  year: number;
+  startedAt: string | null;
+  completedAt: string | null;
+}
 
 export type TagColor = "gray" | "brown" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "red";
 

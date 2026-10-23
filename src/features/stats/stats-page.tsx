@@ -5,6 +5,7 @@ import { useCategories, useLibrary } from "@/lib/queries";
 import { Select } from "@/components/ui/input";
 import { EmptyState, PageContainer, PageHeader } from "@/components/layout/page";
 import { Cover } from "@/components/game/cover";
+import { completionSortKey, completionYear } from "@/lib/completion";
 import { formatDate } from "@/features/goals/progress";
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -55,13 +56,11 @@ export function StatsPage() {
 
   const stats = useMemo(() => {
     const completed = library.filter((e) => e.status === "completed");
-    const completedInYear = completed.filter((e) => e.completedAt?.startsWith(String(year)));
-    const years = [...new Set([currentYear, ...completed.flatMap((e) => (e.completedAt ? [Number(e.completedAt.slice(0, 4))] : []))])].sort(
-      (a, b) => b - a,
-    );
+    const completedInYear = completed.filter((e) => completionYear(e) === year);
+    const years = [...new Set([currentYear, ...completed.flatMap((e) => completionYear(e) ?? [])])].sort((a, b) => b - a);
     const perMonth = MONTHS.map((m, i) => ({
       month: m,
-      jogos: completedInYear.filter((e) => Number(e.completedAt!.slice(5, 7)) === i + 1).length,
+      jogos: completedInYear.filter((e) => e.completedAt && Number(e.completedAt.slice(5, 7)) === i + 1).length,
     }));
     const byCategory = categories
       .map((c) => ({ name: c.name, value: library.filter((e) => e.categoryIds.includes(c.id)).length, fill: CATEGORY_HEX[c.color] }))
@@ -75,7 +74,7 @@ export function StatsPage() {
     const hours = library.reduce((s, e) => s + (e.hours ?? 0), 0);
     const hoursInYear = completedInYear.reduce((s, e) => s + (e.hours ?? 0), 0);
     const topRated = [...rated].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 5);
-    const recent = [...completedInYear].sort((a, b) => b.completedAt!.localeCompare(a.completedAt!)).slice(0, 8);
+    const recent = [...completedInYear].sort((a, b) => completionSortKey(b).localeCompare(completionSortKey(a))).slice(0, 8);
     return { completed, completedInYear, years, perMonth, byCategory, byPlatform, avgRating, hours, hoursInYear, topRated, recent };
   }, [library, categories, year, currentYear]);
 
@@ -169,7 +168,7 @@ export function StatsPage() {
                       <Link to={`/game/${e.id}`} className="flex items-center gap-2.5 rounded-md p-1 hover:bg-accent">
                         <Cover url={e.coverUrl} name={e.name} className="h-9 w-7 rounded-sm" />
                         <span className="flex-1 truncate text-sm">{e.name}</span>
-                        <span className="text-xs text-muted-foreground">{formatDate(e.completedAt!)}</span>
+                        <span className="text-xs text-muted-foreground">{e.completedAt ? formatDate(e.completedAt) : "Data não informada"}</span>
                       </Link>
                     </li>
                   ))}

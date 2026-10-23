@@ -62,7 +62,13 @@ async function getToken(env: Env, force = false) {
   return cachedToken.value;
 }
 
-function queryIgdb(env: Env, query: string, token: string) {
+const FIELDS =
+  "fields name,first_release_date,summary,cover.image_id,genres.name,themes.name,platforms.name,platforms.abbreviation," +
+  "game_type,category,version_parent,total_rating_count;";
+// Main games, remakes and remasters with the most ratings. Keep in sync with POPULAR_FILTER in igdb.rs.
+const POPULAR_QUERY = `${FIELDS} where game_type = (0,8,9) & version_parent = null & total_rating_count > 500; sort total_rating_count desc; limit 30;`;
+
+function queryIgdb(env: Env, body: string, token: string) {
   return fetch(GAMES_URL, {
     method: "POST",
     headers: {
@@ -70,12 +76,30 @@ function queryIgdb(env: Env, query: string, token: string) {
       Authorization: `Bearer ${token}`,
       Accept: "application/json",
     },
-    body:
-      `search "${query}"; ` +
-      "fields name,first_release_date,summary,cover.image_id,genres.name,themes.name,platforms.name,platforms.abbreviation," +
-      "game_type,category,version_parent,total_rating_count; " +
-      "limit 40;",
+    body,
   });
+}
+
+/** Runs an IGDB query through the edge cache, retrying once with a fresh token. */
+async function cachedQuery(env: Env, ctx: Ctx, cacheUrl: string, body: string, shape: (games: RawGame[]) => RawGame[]) {
+  const cache = (caches as unknown as { default: Cache }).default;
+  const cacheKey = new Request(cacheUrl);
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+
+  try {
+    let res = await queryIgdb(env, body, await getToken(env));
+    if (res.status === 401) res = await queryIgdb(env, body, await getToken(env, true));
+    if (!res.ok) return json({ error: `O IGDB respondeu com erro HTTP ${res.status}.` }, 502);
+    const results = shape((await res.json()) as RawGame[])
+      .map(normalize)
+      .filter(Boolean);
+    const response = json(results, 200, { "Cache-Control": "public, max-age=86400" });
+    ctx.waitUntil(cache.put(cacheKey, response.clone()));
+    return response;
+  } catch (err) {
+    return json({ error: `Falha ao consultar o IGDB: ${(err as Error).message}` }, 502);
+  }
 }
 
 // IGDB game types: 0 main, 8 remake, 9 remaster, 10 expanded, 4 standalone expansion rank first;
@@ -119,7 +143,9 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/health") return json({ ok: true });
-    if (url.pathname !== "/search" || request.method !== "POST") return json({ error: "Not found" }, 404);
+    const isSearch = url.pathname === "/search" && request.method === "POST";
+    const isPopular = url.pathname === "/popular" && request.method === "GET";
+    if (!isSearch && !isPopular) return json({ error: "Not found" }, 404);
     if (!env.IGDB_CLIENT_ID || !env.IGDB_CLIENT_SECRET) return json({ error: "Servidor sem chaves do IGDB configuradas." }, 500);
 
     if (env.SEARCH_LIMITER) {
@@ -127,6 +153,8 @@ export default {
       const { success } = await env.SEARCH_LIMITER.limit({ key: ip });
       if (!success) return json({ error: "Muitas buscas seguidas. Aguarde alguns segundos." }, 429);
     }
+
+    if (isPopular) return cachedQuery(env, ctx, "https://igdb-cache.internal/v1/popular", POPULAR_QUERY, (games) => games);
 
     let body: { query?: unknown };
     try {
@@ -140,24 +168,12 @@ export default {
       .slice(0, 100);
     if (query.length < 2) return json([]);
 
-    const cache = (caches as unknown as { default: Cache }).default;
-    const cacheKey = new Request(`https://igdb-cache.internal/v2/search?q=${encodeURIComponent(query.toLowerCase())}`);
-    const hit = await cache.match(cacheKey);
-    if (hit) return hit;
-
-    try {
-      let res = await queryIgdb(env, query, await getToken(env));
-      if (res.status === 401) res = await queryIgdb(env, query, await getToken(env, true));
-      if (!res.ok) return json({ error: `O IGDB respondeu com erro HTTP ${res.status}.` }, 502);
-      const results = sortResults((await res.json()) as RawGame[])
-        .map(normalize)
-        .filter(Boolean)
-        .slice(0, 20);
-      const response = json(results, 200, { "Cache-Control": "public, max-age=86400" });
-      ctx.waitUntil(cache.put(cacheKey, response.clone()));
-      return response;
-    } catch (err) {
-      return json({ error: `Falha ao consultar o IGDB: ${(err as Error).message}` }, 502);
-    }
+    return cachedQuery(
+      env,
+      ctx,
+      `https://igdb-cache.internal/v2/search?q=${encodeURIComponent(query.toLowerCase())}`,
+      `search "${query}"; ${FIELDS} limit 40;`,
+      (games) => sortResults(games).slice(0, 20),
+    );
   },
 };

@@ -148,12 +148,14 @@ struct ProxyError {
 }
 
 async fn search_via_proxy(client: &reqwest::Client, base: &str, query: &str) -> Result<Vec<GameResult>, String> {
-    let res = client
+    let req = client
         .post(format!("{}/search", base.trim_end_matches('/')))
-        .json(&serde_json::json!({ "query": query }))
-        .send()
-        .await
-        .map_err(|e| format!("Falha de rede ao buscar jogos: {e}"))?;
+        .json(&serde_json::json!({ "query": query }));
+    proxy_request(req).await
+}
+
+async fn proxy_request(req: reqwest::RequestBuilder) -> Result<Vec<GameResult>, String> {
+    let res = req.send().await.map_err(|e| format!("Falha de rede ao buscar jogos: {e}"))?;
     if !res.status().is_success() {
         let status = res.status().as_u16();
         let message = res.json::<ProxyError>().await.map(|e| e.error).unwrap_or_default();
@@ -267,10 +269,35 @@ pub async fn search_games(
         return Ok(vec![]);
     }
     let Some((creds, _)) = load_credentials(&app) else {
-        let base = proxy_url().ok_or("Configure as chaves do IGDB em Configurações para buscar jogos.")?;
+        let base = proxy_url().ok_or("Servidor de busca do IGDB não configurado.")?;
         return search_via_proxy(&state.client, &base, &query).await;
     };
 
+    let body = format!("search \"{query}\"; fields {FIELDS}; limit 40;");
+    let mut raw = query_igdb(&state, &creds, body).await?;
+    // Stable sort keeps IGDB's relevance order within each tier.
+    raw.sort_by_key(|g| (rank(g), (g.total_rating_count.unwrap_or(0) < 5) as u8));
+    Ok(raw.into_iter().filter_map(to_result).take(20).collect())
+}
+
+/// Well-known games to suggest before the user types anything.
+#[tauri::command]
+pub async fn popular_games(app: AppHandle, state: State<'_, IgdbState>) -> Result<Vec<GameResult>, String> {
+    let Some((creds, _)) = load_credentials(&app) else {
+        let base = proxy_url().ok_or("Servidor de busca do IGDB não configurado.")?;
+        return proxy_request(state.client.get(format!("{}/popular", base.trim_end_matches('/')))).await;
+    };
+    let raw = query_igdb(&state, &creds, format!("fields {FIELDS}; {POPULAR_FILTER}")).await?;
+    Ok(raw.into_iter().filter_map(to_result).collect())
+}
+
+const FIELDS: &str = "name,first_release_date,summary,cover.image_id,genres.name,themes.name,platforms.name,platforms.abbreviation,\
+                      game_type,category,version_parent,total_rating_count";
+/// Same filter as the worker: main games, remakes and remasters with the most ratings.
+const POPULAR_FILTER: &str =
+    "where game_type = (0,8,9) & version_parent = null & total_rating_count > 500; sort total_rating_count desc; limit 30;";
+
+async fn query_igdb(state: &IgdbState, creds: &Credentials, body: String) -> Result<Vec<RawGame>, String> {
     let access_token = {
         let mut guard = state.token.lock().await;
         let valid = guard.as_ref().filter(|t| t.expires_at > Instant::now());
@@ -285,12 +312,6 @@ pub async fn search_games(
         }
     };
 
-    let body = format!(
-        "search \"{query}\"; \
-         fields name,first_release_date,summary,cover.image_id,genres.name,themes.name,platforms.name,platforms.abbreviation,\
-         game_type,category,version_parent,total_rating_count; \
-         limit 40;"
-    );
     let res = state
         .client
         .post(GAMES_URL)
@@ -309,10 +330,7 @@ pub async fn search_games(
     if !res.status().is_success() {
         return Err(format!("O IGDB respondeu com erro HTTP {}.", res.status().as_u16()));
     }
-    let mut raw: Vec<RawGame> = res.json().await.map_err(|e| e.to_string())?;
-    // Stable sort keeps IGDB's relevance order within each tier.
-    raw.sort_by_key(|g| (rank(g), (g.total_rating_count.unwrap_or(0) < 5) as u8));
-    Ok(raw.into_iter().filter_map(to_result).take(20).collect())
+    res.json().await.map_err(|e| e.to_string())
 }
 
 /// Same tiers as the worker: main games/remakes first, DLC/bundles next, ports/forks/mods last.

@@ -14,7 +14,9 @@ import { useSetEntryCategories, useUpdateEntry } from "@/lib/queries";
 import type { LibraryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Cover } from "@/components/game/cover";
-import { DateField, NumberField, RatingField, TextField } from "@/components/game/fields";
+import { completionSortKey } from "@/lib/completion";
+import { CompletionField } from "@/components/game/completion-field";
+import { NumberField, RatingField, TextField } from "@/components/game/fields";
 import { CategoryPicker, StatusSelect } from "@/components/game/tags";
 
 const col = createColumnHelper<LibraryEntry>();
@@ -117,23 +119,16 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
           />
         ),
       }),
-      col.accessor("completedAt", {
+      col.accessor(completionSortKey, {
+        id: "completion",
         header: () => (
           <>
             <CalendarCheck /> Zerado em
           </>
         ),
-        size: 140,
+        size: 120,
         cell: ({ row }) => (
-          <DateField
-            value={row.original.completedAt}
-            onCommit={(completedAt) =>
-              updateEntry({
-                entry: row.original,
-                patch: completedAt ? { completedAt, status: "completed" } : { completedAt },
-              })
-            }
-          />
+          <CompletionField entry={row.original} onPatch={(patch) => updateEntry({ entry: row.original, patch })} />
         ),
       }),
       col.accessor("releaseYear", {

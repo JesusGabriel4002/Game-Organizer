@@ -2,7 +2,7 @@ import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-const fieldClass =
+export const fieldClass =
   "h-7 w-full rounded-sm bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground hover:bg-accent focus:bg-accent focus:ring-1 focus:ring-ring";
 
 /** Text input that only commits on blur or Enter, like a Notion property cell. */
