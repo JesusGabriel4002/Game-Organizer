@@ -21,6 +21,7 @@ Licença [MIT](LICENSE) · [Code signing policy](#code-signing-policy) · [Priva
   - zerar um jogo em um ano (ex.: em 2026);
   - zerar N jogos em um ano ou período, opcionalmente de uma categoria (ex.: 5 indies em 2026), com ritmo necessário por mês.
 - Estatísticas: zerados por mês, por categoria, por plataforma, horas e notas.
+- Importar uma lista de jogos de um CSV (Configurações → Importar CSV). Só a coluna `nome` é obrigatória; `status`, `ano`, `plataforma`, `nota` e `horas` são opcionais. Cada jogo é buscado no IGDB, cerca de 2 por segundo para respeitar o limite da API.
 - Backup e restauração em JSON (sem as chaves de API).
 - Tema claro e escuro.
 
