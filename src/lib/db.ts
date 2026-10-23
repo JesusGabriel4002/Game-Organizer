@@ -1,4 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
+import { matchCategories } from "./auto-categories";
 import { newId, nowIso, parseJsonArray } from "./utils";
 import type { Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbDetails, IgdbGame, LibraryEntry, TagColor } from "./types";
 
@@ -231,17 +232,17 @@ export async function updateEntry(id: string, patch: EntryPatch, current?: Libra
 
 const IGDB_REFRESH_DAYS = 30;
 
-/** Library games whose IGDB ratings / time to beat were never fetched or are getting old. */
-export async function listGamesToSync(): Promise<number[]> {
+/** Library games whose IGDB details were never fetched (`firstSync`) or are getting old. */
+export async function listGamesToSync(): Promise<{ igdbId: number; firstSync: boolean }[]> {
   const db = await getDb();
   const staleBefore = new Date(Date.now() - IGDB_REFRESH_DAYS * 86_400_000).toISOString();
-  const rows = await db.select<{ igdb_id: number }[]>(
-    `SELECT DISTINCT g.igdb_id FROM games g
+  const rows = await db.select<{ igdb_id: number; synced: string | null }[]>(
+    `SELECT DISTINCT g.igdb_id, g.igdb_synced_at AS synced FROM games g
        JOIN user_games ug ON ug.game_id = g.id AND ug.deleted_at IS NULL
       WHERE g.igdb_id IS NOT NULL AND (g.igdb_synced_at IS NULL OR g.igdb_synced_at < $1)`,
     [staleBefore],
   );
-  return rows.map((r) => r.igdb_id);
+  return rows.map((r) => ({ igdbId: r.igdb_id, firstSync: r.synced === null }));
 }
 
 /** Derived data, so updated_at is left alone and backups don't treat it as a user edit. */
@@ -250,10 +251,51 @@ export async function saveGameDetails(details: IgdbDetails[]) {
   const now = nowIso();
   for (const d of details) {
     await db.execute(
-      "UPDATE games SET critic_rating = $1, igdb_rating = $2, time_to_beat = $3, igdb_synced_at = $4 WHERE igdb_id = $5",
-      [d.criticRating, d.igdbRating, d.timeToBeat, now, d.igdbId],
+      `UPDATE games SET critic_rating = $1, igdb_rating = $2, time_to_beat = $3, igdb_tags = $4, igdb_synced_at = $5
+        WHERE igdb_id = $6`,
+      [d.criticRating, d.igdbRating, d.timeToBeat, JSON.stringify(d.tags), now, d.igdbId],
     );
   }
+}
+
+/**
+ * Adds the built-in categories (Soulslike, Cozy...) that match each game. Only adds: a category the
+ * user removed from a game stays removed, and a category the user deleted is never recreated.
+ */
+export async function applyAutoCategories(igdbIds?: number[]): Promise<number> {
+  if (igdbIds && !igdbIds.length) return 0;
+  const db = await getDb();
+  const filter = igdbIds ? `AND g.igdb_id IN (${igdbIds.map(Number).join(",")})` : "";
+  const games = await db.select<{ entry_id: string; name: string; genres: string; igdb_tags: string | null }[]>(
+    `SELECT ug.id AS entry_id, g.name, g.genres, g.igdb_tags FROM user_games ug
+       JOIN games g ON g.id = ug.game_id
+      WHERE ug.deleted_at IS NULL ${filter}`,
+  );
+  // Active categories win over deleted ones with the same name.
+  const existing = await db.select<{ id: string; name: string; deleted_at: string | null }[]>(
+    "SELECT id, name, deleted_at FROM categories ORDER BY deleted_at IS NULL",
+  );
+  const byName = new Map(existing.map((c) => [c.name.toLowerCase(), c]));
+  const now = nowIso();
+  let added = 0;
+  for (const game of games) {
+    const tags = [...parseJsonArray(game.igdb_tags), ...parseJsonArray(game.genres)];
+    for (const rule of matchCategories(game.name, tags)) {
+      let category = byName.get(rule.name.toLowerCase());
+      if (category?.deleted_at) continue;
+      if (!category) {
+        category = { id: await createCategory(rule.name, rule.color), name: rule.name, deleted_at: null };
+        byName.set(rule.name.toLowerCase(), category);
+      }
+      const result = await db.execute(
+        `INSERT INTO user_game_categories (user_game_id, category_id, created_at, updated_at) VALUES ($1, $2, $3, $3)
+         ON CONFLICT (user_game_id, category_id) DO NOTHING`,
+        [game.entry_id, category.id, now],
+      );
+      added += result.rowsAffected;
+    }
+  }
+  return added;
 }
 
 export async function deleteEntry(id: string) {

@@ -26,7 +26,9 @@ export function useLibrary() {
 const SYNC_BATCH = 50;
 const SYNC_RETRY_MS = 5 * 60_000;
 
-/** Fills in IGDB ratings and time to beat for library games in the background. */
+export const AUTO_CATEGORIES_SETTING = "autoCategories";
+
+/** Fills in IGDB ratings and time to beat in the background, and auto-categorizes newly added games. */
 export function useIgdbSync() {
   const qc = useQueryClient();
   const { data: library } = useLibrary();
@@ -38,11 +40,15 @@ export function useIgdbSync() {
     running.current = true;
     (async () => {
       try {
-        const ids = await db.listGamesToSync();
-        for (let i = 0; i < ids.length; i += SYNC_BATCH) {
-          await db.saveGameDetails(await igdb.details(ids.slice(i, i + SYNC_BATCH)));
+        const pending = await db.listGamesToSync();
+        if (!pending.length) return;
+        for (let i = 0; i < pending.length; i += SYNC_BATCH) {
+          await db.saveGameDetails(await igdb.details(pending.slice(i, i + SYNC_BATCH).map((p) => p.igdbId)));
         }
-        if (ids.length) await qc.invalidateQueries({ queryKey: keys.library });
+        if ((await db.getSetting(AUTO_CATEGORIES_SETTING)) !== "off") {
+          await db.applyAutoCategories(pending.filter((p) => p.firstSync).map((p) => p.igdbId));
+        }
+        await Promise.all([keys.library, keys.categories].map((k) => qc.invalidateQueries({ queryKey: k })));
       } catch {
         failedAt.current = Date.now();
       } finally {
@@ -145,6 +151,14 @@ export function useUpdateCategory() {
   return useMutation({
     mutationFn: ({ id, ...patch }: { id: string; name?: string; color?: TagColor }) => db.updateCategory(id, patch),
     onSuccess: () => invalidate(keys.categories),
+  });
+}
+
+export function useApplyAutoCategories() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: () => db.applyAutoCategories(),
+    onSuccess: () => invalidate(keys.categories, keys.library),
   });
 }
 

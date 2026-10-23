@@ -39,7 +39,14 @@ interface RawDetails {
   id: number;
   aggregated_rating?: number;
   total_rating?: number;
+  keywords?: Named[];
+  genres?: Named[];
+  themes?: Named[];
+  game_modes?: Named[];
+  player_perspectives?: Named[];
 }
+
+const names = (list?: Named[]) => (list ?? []).flatMap((n) => (n.name ? [n.name] : []));
 
 interface RawTimeToBeat {
   game_id: number;
@@ -105,14 +112,18 @@ async function queryWithRetry<T>(env: Env, body: string, url = GAMES_URL): Promi
 /** Ratings and time to beat for games already in someone's library. */
 async function details(env: Env, ctx: Ctx, ids: number[]) {
   const cache = (caches as unknown as { default: Cache }).default;
-  const cacheKey = new Request(`https://igdb-cache.internal/v1/details?ids=${ids.join(",")}`);
+  const cacheKey = new Request(`https://igdb-cache.internal/v2/details?ids=${ids.join(",")}`);
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
   try {
     const list = ids.join(",");
     const [games, times] = await Promise.all([
-      queryWithRetry<RawDetails[]>(env, `fields aggregated_rating,total_rating; where id = (${list}); limit ${MAX_DETAIL_IDS};`),
+      queryWithRetry<RawDetails[]>(
+        env,
+        "fields aggregated_rating,total_rating,keywords.name,genres.name,themes.name,game_modes.name,player_perspectives.name; " +
+          `where id = (${list}); limit ${MAX_DETAIL_IDS};`,
+      ),
       queryWithRetry<RawTimeToBeat[]>(
         env,
         `fields game_id,hastily,normally,completely; where game_id = (${list}); limit ${MAX_DETAIL_IDS};`,
@@ -127,6 +138,12 @@ async function details(env: Env, ctx: Ctx, ids: number[]) {
         criticRating: g?.aggregated_rating ?? null,
         igdbRating: g?.total_rating ?? null,
         timeToBeat: timeById.get(id) ?? null,
+        // Lower-cased tags the app matches against its built-in category rules.
+        tags: [
+          ...new Set(
+            [g?.keywords, g?.genres, g?.themes, g?.game_modes, g?.player_perspectives].flatMap((l) => names(l).map((n) => n.toLowerCase())),
+          ),
+        ],
       };
     });
     const response = json(results, 200, { "Cache-Control": "public, max-age=86400" });
@@ -168,11 +185,15 @@ function rank(raw: RawGame) {
   return (TYPE_RANK[type] ?? 1) + (raw.version_parent ? 1 : 0);
 }
 
-/** Keeps IGDB's relevance order inside each tier, but lifts main games and popular titles to the top. */
-function sortResults(games: RawGame[]) {
+/** Keeps IGDB's relevance order inside each tier, but lifts exact names, main games and popular titles to the top. */
+function sortResults(games: RawGame[], query: string) {
+  const q = query.toLowerCase();
+  const exact = (g: RawGame) => Number(g.name?.toLowerCase() === q);
   return games
     .map((g, index) => ({ g, index }))
     .sort((a, b) => {
+      const name = exact(b.g) - exact(a.g);
+      if (name !== 0) return name;
       const tier = rank(a.g) - rank(b.g);
       if (tier !== 0) return tier;
       const popular = Number((b.g.total_rating_count ?? 0) >= 5) - Number((a.g.total_rating_count ?? 0) >= 5);
@@ -237,9 +258,9 @@ export default {
     return cachedQuery(
       env,
       ctx,
-      `https://igdb-cache.internal/v2/search?q=${encodeURIComponent(query.toLowerCase())}`,
+      `https://igdb-cache.internal/v3/search?q=${encodeURIComponent(query.toLowerCase())}`,
       `search "${query}"; ${FIELDS} limit 40;`,
-      (games) => sortResults(games).slice(0, 20),
+      (games) => sortResults(games, query).slice(0, 20),
     );
   },
 };
