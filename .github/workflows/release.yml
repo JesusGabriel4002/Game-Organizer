@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Game Organizer ${{ github.ref_name }}
+          releaseBody: |
+            **Como instalar:** baixe o arquivo `*-setup.exe` abaixo e execute. Se o Windows SmartScreen avisar, clique em "Mais informações" e depois em "Executar assim mesmo" (o app ainda não tem assinatura digital).
+
+            Os dados ficam salvos localmente (SQLite); nada vai para a nuvem.
+          releaseDraft: false
+          prerelease: false

@@ -22,7 +22,16 @@ Tudo fica salvo localmente num banco SQLite. Nenhum dado ou chave vai para a nuv
 
 Tauri 2 (Rust) + React 19 + TypeScript + Vite, Tailwind CSS 4 com componentes no estilo shadcn/ui, TanStack Query e Table, dnd-kit, Tiptap, Recharts e SQLite via `tauri-plugin-sql`.
 
-## Pré-requisitos (Windows)
+## Download
+
+Baixe o instalador mais recente na página de [Releases](https://github.com/JesusGabriel4002/Game-Organizer/releases/latest):
+
+- `Game.Organizer_X.Y.Z_x64-setup.exe`: instalador recomendado.
+- `Game.Organizer_X.Y.Z_x64_en-US.msi`: instalador MSI (alternativo).
+
+Se o Windows SmartScreen avisar na primeira execução, clique em **Mais informações** e depois em **Executar assim mesmo**. O aviso aparece porque o app ainda não tem assinatura digital.
+
+## Pré-requisitos para desenvolver (Windows)
 
 - [Node.js](https://nodejs.org) 20+
 - [Rust](https://rustup.rs) (`winget install Rustlang.Rustup`)
@@ -34,7 +43,46 @@ Tauri 2 (Rust) + React 19 + TypeScript + Vite, Tailwind CSS 4 com componentes no
 ```bash
 npm install
 npm run tauri dev     # abre o app em modo desenvolvimento
-npm run tauri build   # gera o instalador em src-tauri/target/release/bundle/
+npm run tauri build   # gera os instaladores localmente
+```
+
+O build local gera:
+
+| Arquivo | Caminho |
+| --- | --- |
+| Instalador NSIS | `src-tauri/target/release/bundle/nsis/Game Organizer_X.Y.Z_x64-setup.exe` |
+| Instalador MSI | `src-tauri/target/release/bundle/msi/Game Organizer_X.Y.Z_x64_en-US.msi` |
+| Executável sem instalação | `src-tauri/target/release/game-organizer.exe` |
+
+A pasta `target/` está no `.gitignore`, então os compilados não vão para o repositório. Eles são distribuídos pelas Releases.
+
+## Publicando uma nova versão
+
+As releases são automáticas. O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) roda no GitHub Actions sempre que uma tag `v*` é enviada. Ele compila o app num runner Windows e cria a release com os dois instaladores anexados.
+
+1. Atualize a versão nos três arquivos de uma vez (`package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`):
+
+   ```bash
+   npm run bump -- 0.2.0
+   ```
+
+2. Faça o commit, crie a tag e envie:
+
+   ```bash
+   git commit -am "v0.2.0"
+   git tag v0.2.0
+   git push origin main --tags
+   ```
+
+3. Acompanhe a compilação na aba **Actions** do GitHub (leva uns 10 minutos). Quando terminar, a release `v0.2.0` aparece em **Releases** com os instaladores.
+
+A versão da tag precisa ser igual à dos arquivos, porque o nome dos instaladores usa a versão do `tauri.conf.json`. Para corrigir uma release com problema, apague a release e a tag no GitHub (`gh release delete v0.2.0 --cleanup-tag`) e repita o passo 2.
+
+### Publicando manualmente (sem Actions)
+
+```bash
+npm run tauri build
+gh release create v0.2.0 "src-tauri/target/release/bundle/nsis/Game Organizer_0.2.0_x64-setup.exe" "src-tauri/target/release/bundle/msi/Game Organizer_0.2.0_x64_en-US.msi" --title "Game Organizer v0.2.0" --generate-notes
 ```
 
 ## Configurando a busca do IGDB
@@ -64,6 +112,10 @@ src/
 src-tauri/
   migrations/      SQL do banco
   src/commands/    igdb.rs (busca + token da Twitch), files.rs (backup)
+scripts/
+  bump-version.mjs atualiza a versão nos três arquivos de configuração
+.github/workflows/
+  release.yml      compila e publica a release quando uma tag v* é enviada
 ```
 
 ## Próximos passos

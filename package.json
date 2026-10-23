@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "bump": "node scripts/bump-version.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
