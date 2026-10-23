@@ -200,7 +200,7 @@ export function LibraryPage() {
       ) : entries.length === 0 && viewMode !== "board" ? (
         <EmptyState title="Nenhum jogo encontrado">Ajuste os filtros ou adicione um jogo novo.</EmptyState>
       ) : viewMode === "table" ? (
-        <TableView entries={entries} />
+        <TableView entries={entries} platforms={platforms} />
       ) : viewMode === "board" ? (
         <BoardView entries={entries} />
       ) : (
