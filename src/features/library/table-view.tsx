@@ -6,23 +6,22 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, CalendarCheck, Clock, Gamepad2, Hash, ListChecks, Monitor, Star, Tags } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarCheck, Gamepad2, ListChecks, Tags } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { COMMON_PLATFORMS } from "@/lib/constants";
+import { completionSortKey } from "@/lib/completion";
 import { useSetEntryCategories, useUpdateEntry } from "@/lib/queries";
 import type { LibraryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Cover } from "@/components/game/cover";
-import { completionSortKey } from "@/lib/completion";
 import { CompletionField } from "@/components/game/completion-field";
-import { NumberField, RatingField, TextField } from "@/components/game/fields";
+import { Cover } from "@/components/game/cover";
 import { CategoryPicker, StatusSelect } from "@/components/game/tags";
 
 const col = createColumnHelper<LibraryEntry>();
 const STATUS_ORDER = { playing: 0, backlog: 1, completed: 2 };
 
-export function TableView({ entries, platforms }: { entries: LibraryEntry[]; platforms: string[] }) {
+/** Same information as the gallery cards; the rest lives on the game page. */
+export function TableView({ entries }: { entries: LibraryEntry[] }) {
   const navigate = useNavigate();
   const { mutate: updateEntry } = useUpdateEntry();
   const { mutate: setCategories } = useSetEntryCategories();
@@ -36,7 +35,7 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
             <Gamepad2 /> Nome
           </>
         ),
-        size: 320,
+        size: 360,
         cell: ({ row }) => (
           <button
             onClick={() => navigate(`/game/${row.original.id}`)}
@@ -59,66 +58,6 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
           <StatusSelect value={row.original.status} onChange={(status) => updateEntry({ entry: row.original, patch: { status } })} />
         ),
       }),
-      col.accessor((e) => e.categoryIds.length, {
-        id: "categories",
-        header: () => (
-          <>
-            <Tags /> Categorias
-          </>
-        ),
-        size: 220,
-        cell: ({ row }) => (
-          <CategoryPicker
-            value={row.original.categoryIds}
-            placeholder=""
-            onChange={(categoryIds) => setCategories({ entryId: row.original.id, categoryIds })}
-          />
-        ),
-      }),
-      col.accessor("platform", {
-        header: () => (
-          <>
-            <Monitor /> Plataforma
-          </>
-        ),
-        size: 130,
-        cell: ({ row }) => (
-          <TextField
-            value={row.original.platform}
-            placeholder=""
-            list="platform-options"
-            onCommit={(platform) => updateEntry({ entry: row.original, patch: { platform } })}
-          />
-        ),
-      }),
-      col.accessor("rating", {
-        header: () => (
-          <>
-            <Star /> Nota
-          </>
-        ),
-        size: 140,
-        sortUndefined: "last",
-        cell: ({ row }) => (
-          <RatingField value={row.original.rating} onCommit={(rating) => updateEntry({ entry: row.original, patch: { rating } })} />
-        ),
-      }),
-      col.accessor("hours", {
-        header: () => (
-          <>
-            <Clock /> Horas
-          </>
-        ),
-        size: 90,
-        cell: ({ row }) => (
-          <NumberField
-            value={row.original.hours}
-            placeholder=""
-            suffix="h"
-            onCommit={(hours) => updateEntry({ entry: row.original, patch: { hours } })}
-          />
-        ),
-      }),
       col.accessor(completionSortKey, {
         id: "completion",
         header: () => (
@@ -131,14 +70,21 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
           <CompletionField entry={row.original} onPatch={(patch) => updateEntry({ entry: row.original, patch })} />
         ),
       }),
-      col.accessor("releaseYear", {
+      col.accessor((e) => e.categoryIds.length, {
+        id: "categories",
         header: () => (
           <>
-            <Hash /> Ano
+            <Tags /> Categorias
           </>
         ),
-        size: 70,
-        cell: ({ getValue }) => <span className="px-1 text-muted-foreground">{getValue() ?? ""}</span>,
+        size: 260,
+        cell: ({ row }) => (
+          <CategoryPicker
+            value={row.original.categoryIds}
+            placeholder=""
+            onChange={(categoryIds) => setCategories({ entryId: row.original.id, categoryIds })}
+          />
+        ),
       }),
     ],
     [navigate, updateEntry, setCategories],
@@ -156,11 +102,6 @@ export function TableView({ entries, platforms }: { entries: LibraryEntry[]; pla
 
   return (
     <div className="overflow-x-auto">
-      <datalist id="platform-options">
-        {[...new Set([...platforms, ...COMMON_PLATFORMS])].map((p) => (
-          <option key={p} value={p} />
-        ))}
-      </datalist>
       <table className="w-full border-collapse text-sm" style={{ minWidth: table.getTotalSize() }}>
         <thead>
           {table.getHeaderGroups().map((hg) => (
