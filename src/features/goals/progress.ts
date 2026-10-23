@@ -1,5 +1,6 @@
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { completionYear } from "@/lib/completion";
 import type { Goal, LibraryEntry } from "@/lib/types";
 
 export type GoalState = "done" | "late" | "failed" | "behind" | "active" | "orphan";
@@ -23,6 +24,17 @@ function inPeriod(date: string | null, start: string | null, end: string) {
   return !!date && (!start || date >= start) && date <= end;
 }
 
+/** Entries with only a year count whenever that year overlaps the goal's period. */
+function completedInPeriod(e: LibraryEntry, start: string | null, end: string) {
+  if (e.completedAt) return inPeriod(e.completedAt, start, end);
+  const year = completionYear(e);
+  return year !== null && (!start || year >= Number(start.slice(0, 4))) && year <= Number(end.slice(0, 4));
+}
+
+function completionText(e: LibraryEntry) {
+  return e.completedAt ? formatDate(e.completedAt) : String(completionYear(e));
+}
+
 export function computeProgress(goal: Goal, library: LibraryEntry[], today = new Date()): GoalProgress {
   const daysLeft = differenceInCalendarDays(parseISO(goal.deadline), today);
 
@@ -31,7 +43,7 @@ export function computeProgress(goal: Goal, library: LibraryEntry[], today = new
     const entries = library.filter(
       (e) =>
         e.status === "completed" &&
-        inPeriod(e.completedAt, goal.periodStart, goal.deadline) &&
+        completedInPeriod(e, goal.periodStart, goal.deadline) &&
         (!goal.categoryId || e.categoryIds.includes(goal.categoryId)),
     );
     const current = entries.length;
@@ -66,11 +78,11 @@ export function computeProgress(goal: Goal, library: LibraryEntry[], today = new
   if (!entry) {
     return { state: "orphan", current: 0, target: 1, percent: 0, daysLeft, entries: [], hint: "Jogo removido da biblioteca" };
   }
-  const completed = entry.status === "completed" && !!entry.completedAt;
-  const onTime = completed && inPeriod(entry.completedAt, goal.periodStart, goal.deadline);
+  const completed = entry.status === "completed" && completionYear(entry) !== null;
+  const onTime = completed && completedInPeriod(entry, goal.periodStart, goal.deadline);
 
-  if (onTime) return { state: "done", current: 1, target: 1, percent: 100, daysLeft, entries: [entry], hint: `Zerado em ${formatDate(entry.completedAt!)}` };
-  if (completed) return { state: "late", current: 1, target: 1, percent: 100, daysLeft, entries: [entry], hint: `Zerado fora do prazo (${formatDate(entry.completedAt!)})` };
+  if (onTime) return { state: "done", current: 1, target: 1, percent: 100, daysLeft, entries: [entry], hint: `Zerado em ${completionText(entry)}` };
+  if (completed) return { state: "late", current: 1, target: 1, percent: 100, daysLeft, entries: [entry], hint: `Zerado fora do prazo (${completionText(entry)})` };
   if (daysLeft < 0) return { state: "failed", current: 0, target: 1, percent: 0, daysLeft, entries: [entry], hint: "Prazo encerrado" };
 
   const percent = entry.status === "playing" ? 50 : 0;

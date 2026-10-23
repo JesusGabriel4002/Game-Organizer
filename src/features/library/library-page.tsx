@@ -1,6 +1,7 @@
 import { Check, Filter, Kanban, LayoutGrid, Plus, Search, Table2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import { completionSortKey } from "@/lib/completion";
 import { STATUS_META } from "@/lib/constants";
 import { useCategories, useLibrary } from "@/lib/queries";
 import { usePalette, useUi, type ViewMode } from "@/lib/store";
@@ -31,7 +32,7 @@ type SortKey = "updated" | "name" | "completed" | "rating";
 const SORTS: Record<SortKey, { label: string; fn: (a: LibraryEntry, b: LibraryEntry) => number }> = {
   updated: { label: "Editados recentemente", fn: (a, b) => b.updatedAt.localeCompare(a.updatedAt) },
   name: { label: "Nome (A-Z)", fn: (a, b) => a.name.localeCompare(b.name, "pt-BR") },
-  completed: { label: "Zerados recentemente", fn: (a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? "") },
+  completed: { label: "Zerados recentemente", fn: (a, b) => completionSortKey(b).localeCompare(completionSortKey(a)) },
   rating: { label: "Maior nota", fn: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) },
 };
 

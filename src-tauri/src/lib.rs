@@ -14,12 +14,20 @@ fn normalized(sql: &'static str) -> &'static str {
 }
 
 fn migrations() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "init",
-        sql: normalized(include_str!("../migrations/001_init.sql")),
-        kind: MigrationKind::Up,
-    }]
+    vec![
+        Migration {
+            version: 1,
+            description: "init",
+            sql: normalized(include_str!("../migrations/001_init.sql")),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "completed_year",
+            sql: normalized(include_str!("../migrations/002_completed_year.sql")),
+            kind: MigrationKind::Up,
+        },
+    ]
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -38,6 +46,7 @@ pub fn run() {
             commands::igdb::igdb_save_credentials,
             commands::igdb::igdb_clear_credentials,
             commands::igdb::search_games,
+            commands::igdb::popular_games,
             commands::files::write_text_file,
             commands::files::read_text_file,
         ])

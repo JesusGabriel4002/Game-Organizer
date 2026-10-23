@@ -7,6 +7,7 @@ export const igdb = {
     invoke<void>("igdb_save_credentials", { clientId, clientSecret }),
   clearCredentials: () => invoke<void>("igdb_clear_credentials"),
   search: (query: string) => invoke<IgdbGame[]>("search_games", { query }),
+  popular: () => invoke<IgdbGame[]>("popular_games"),
 };
 
 export const files = {

@@ -9,7 +9,8 @@ Licença [MIT](LICENSE) · [Code signing policy](#code-signing-policy) · [Priva
 ## Funcionalidades
 
 - Biblioteca com três visualizações: **tabela** (edição direto na célula), **board** kanban (arraste para mudar o status) e **galeria** de capas.
-- Busca de jogos no **IGDB** (base da Twitch) com `Ctrl+K`, sem precisar cadastrar chave: capa, ano, gêneros e plataformas preenchidos automaticamente. Também dá para adicionar jogos manualmente.
+- Busca de jogos no **IGDB** (base da Twitch) com `Ctrl+K`, sem precisar cadastrar chave: capa, ano, gêneros e plataformas preenchidos automaticamente. Com a busca vazia, aparecem jogos populares. Também dá para adicionar jogos manualmente.
+- Jogos zerados guardam o **ano** em que foram zerados; as datas exatas de início e fim são opcionais. Na lista aparece a data enquanto ainda é o mesmo ano e depois só o ano (ex.: "2026"); a data completa fica na página do jogo.
 - Categorias com cores, filtros por categoria e plataforma, e categorização automática pelos gêneros do IGDB (ex.: todos os jogos "Indie" viram "Indies").
 - Página de cada jogo com status, nota (0 a 10), horas, datas de início e de quando zerou, e anotações em texto rico.
 - Metas:

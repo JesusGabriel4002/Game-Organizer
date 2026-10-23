@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState, PageContainer } from "@/components/layout/page";
 import { Cover } from "@/components/game/cover";
+import { CompletionField } from "@/components/game/completion-field";
 import { DateField, NumberField, RatingField, TextField } from "@/components/game/fields";
 import { CategoryPicker, StatusSelect, Tag } from "@/components/game/tags";
 import { NotesEditor } from "./notes-editor";
@@ -188,13 +189,7 @@ export function GamePage() {
             <DateField value={entry.startedAt} onCommit={(startedAt) => updateEntry({ entry, patch: { startedAt } })} className="max-w-44" />
           </Property>
           <Property icon={<CalendarCheck />} label="Zerado em">
-            <DateField
-              value={entry.completedAt}
-              onCommit={(completedAt) =>
-                updateEntry({ entry, patch: completedAt ? { completedAt, status: "completed" } : { completedAt } })
-              }
-              className="max-w-44"
-            />
+            <CompletionField entry={entry} detailed onPatch={(patch) => updateEntry({ entry, patch })} className="max-w-44" />
           </Property>
           {entry.releaseYear && (
             <Property icon={<Hash />} label="Lançamento">

@@ -1,6 +1,6 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as db from "./db";
-import type { EntryPatch, GameStatus, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
+import type { CompletionInput, EntryPatch, GameStatus, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
 import { toast } from "./toast";
 import { errorMessage } from "./utils";
 
@@ -47,8 +47,9 @@ export function useUpdateEntry() {
       // Optimistic update keeps drag-and-drop and inline edits snappy.
       await qc.cancelQueries({ queryKey: keys.library });
       const previous = qc.getQueryData<LibraryEntry[]>(keys.library);
+      const derived: EntryPatch = patch.completedAt ? { completedYear: Number(patch.completedAt.slice(0, 4)) } : {};
       qc.setQueryData<LibraryEntry[]>(keys.library, (list) =>
-        list?.map((e) => (e.id === entry.id ? { ...e, ...patch } : e)),
+        list?.map((e) => (e.id === entry.id ? { ...e, ...patch, ...derived } : e)),
       );
       return { previous };
     },
@@ -63,7 +64,8 @@ export function useUpdateEntry() {
 export function useAddFromIgdb() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ game, status }: { game: IgdbGame; status: GameStatus }) => db.addFromIgdb(game, status),
+    mutationFn: ({ game, status, completion }: { game: IgdbGame; status: GameStatus; completion?: CompletionInput }) =>
+      db.addFromIgdb(game, status, completion),
     onSuccess: () => invalidate(keys.library),
   });
 }
@@ -71,7 +73,8 @@ export function useAddFromIgdb() {
 export function useAddManual() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ name, status }: { name: string; status: GameStatus }) => db.addManual(name, status),
+    mutationFn: ({ name, status, completion }: { name: string; status: GameStatus; completion?: CompletionInput }) =>
+      db.addManual(name, status, completion),
     onSuccess: () => invalidate(keys.library),
   });
 }
