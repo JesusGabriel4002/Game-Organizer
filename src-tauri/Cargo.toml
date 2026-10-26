@@ -1,6 +1,6 @@
 [package]
 name = "game-organizer"
-version = "0.2.4"
+version = "0.3.0"
 description = "Organizador pessoal de jogos"
 edition = "2021"
 license = "MIT"
@@ -22,3 +22,4 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["sync"] }
+keyring = "3"

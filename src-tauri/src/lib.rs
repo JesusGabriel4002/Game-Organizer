@@ -45,6 +45,12 @@ fn migrations() -> Vec<Migration> {
             sql: normalized(include_str!("../migrations/005_rating_stars.sql")),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "sync",
+            sql: normalized(include_str!("../migrations/006_sync.sql")),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -68,6 +74,9 @@ pub fn run() {
             commands::igdb::game_details,
             commands::files::write_text_file,
             commands::files::read_text_file,
+            commands::secure_store::secure_store_get,
+            commands::secure_store::secure_store_set,
+            commands::secure_store::secure_store_clear,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

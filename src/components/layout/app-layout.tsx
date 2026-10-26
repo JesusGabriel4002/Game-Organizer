@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Outlet } from "react-router-dom";
 import { useIgdbSync } from "@/lib/queries";
+import { useCloudSync } from "@/lib/use-cloud-sync";
 import { useUi, usePalette } from "@/lib/store";
 import { Sidebar } from "./sidebar";
 import { Toaster } from "./toaster";
@@ -43,6 +44,7 @@ export function AppLayout() {
   useThemeClass();
   usePaletteShortcut();
   useIgdbSync();
+  useCloudSync();
   return (
     <div className="flex h-full overflow-hidden border-t border-border">
       <Sidebar />

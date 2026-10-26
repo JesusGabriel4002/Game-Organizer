@@ -15,3 +15,10 @@ export const files = {
   write: (path: string, contents: string) => invoke<void>("write_text_file", { path, contents }),
   read: (path: string) => invoke<string>("read_text_file", { path }),
 };
+
+/** Session token in the Windows Credential Manager — never localStorage. */
+export const secureStore = {
+  get: () => invoke<string | null>("secure_store_get"),
+  set: (value: string) => invoke<void>("secure_store_set", { value }),
+  clear: () => invoke<void>("secure_store_clear"),
+};

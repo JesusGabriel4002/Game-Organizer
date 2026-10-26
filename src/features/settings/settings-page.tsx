@@ -10,6 +10,7 @@ import { errorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/input";
 import { PageContainer, PageHeader } from "@/components/layout/page";
+import { AccountSection } from "@/features/account/account-section";
 import { CsvExportButton, CsvImportButton } from "./csv-import";
 
 function Section({ title, description, children }: { title: string; description?: React.ReactNode; children: React.ReactNode }) {
@@ -116,6 +117,13 @@ export function SettingsPage() {
             <option value="dark">Escuro</option>
           </Select>
         </div>
+      </Section>
+
+      <Section
+        title="Conta e sincronização"
+        description="Opcional. Com uma conta, a biblioteca sobe para a nuvem quando houver internet e continua disponível neste aparelho offline."
+      >
+        <AccountSection />
       </Section>
 
       <IgdbSection />

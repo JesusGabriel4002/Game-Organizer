@@ -22,6 +22,7 @@ Licença [MIT](LICENSE) · [Code signing policy](#code-signing-policy) · [Priva
   - zerar N jogos em um ano ou período, opcionalmente de uma categoria (ex.: 5 indies em 2026), com ritmo necessário por mês.
 - Estatísticas: zerados por mês, por categoria, por plataforma, horas e notas.
 - Exportar e importar a lista de jogos em CSV (Configurações). Só a coluna `nome` é obrigatória na importação; `status`, `ano`, `plataforma`, `nota` e `horas` são opcionais. Cada jogo importado é buscado no IGDB, cerca de 2 por segundo para respeitar o limite da API.
+- Conta opcional (Supabase): login por e-mail e senha e sincronização local-first (funciona offline; com internet sobe e desce as mudanças).
 - Backup e restauração em JSON (sem as chaves de API).
 - Tema claro e escuro.
 
@@ -175,10 +176,19 @@ This program will not transfer any information to other networked systems unless
 
 Na prática:
 
-- Jogos, categorias, metas e anotações ficam apenas no seu computador (`%APPDATA%\com.gameorganizer.app`).
+- Sem conta, jogos, categorias, metas e anotações ficam apenas no seu computador (`%APPDATA%\com.gameorganizer.app`).
+- Com conta (opcional), uma cópia da biblioteca também fica no [Supabase](https://supabase.com) (Postgres + Auth), só acessível pela sua sessão. Valem a [política de privacidade do Supabase](https://supabase.com/privacy). A sessão fica no Gerenciador de Credenciais do Windows, não em texto puro.
 - Quando você busca um jogo, o termo digitado é enviado ao servidor de busca do projeto (Cloudflare Worker), que consulta o [IGDB](https://www.igdb.com). Valem as políticas de privacidade da [Cloudflare](https://www.cloudflare.com/privacypolicy/) e da [Twitch/IGDB](https://www.twitch.tv/p/legal/privacy-notice/). O servidor não guarda nenhum dado pessoal; ele só mantém um cache de 24 horas dos resultados por termo buscado.
 - As capas dos jogos são carregadas de `images.igdb.com`.
-- Não há telemetria, contas, anúncios nem rastreamento.
+- Não há telemetria, anúncios nem rastreamento.
+
+### Configurar o Supabase (conta e sync)
+
+1. Crie um projeto no Supabase e ative login por e-mail/senha.
+2. Rode o SQL em [`supabase/migrations/001_sync.sql`](supabase/migrations/001_sync.sql) no **SQL Editor**.
+3. (Opcional) Faça o deploy de [`supabase/functions/delete-account`](supabase/functions/delete-account) para o botão "Excluir conta".
+4. Defina `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no `.env` local e nas Variables do GitHub Actions. Nunca coloque a `service_role` no app.
+5. Detalhes em [`supabase/README.md`](supabase/README.md).
 
 ## Estrutura
 
@@ -202,7 +212,7 @@ scripts/
 
 ## Próximos passos
 
-- Sincronização com nuvem (Supabase ou Turso). O banco já usa UUIDs, `updated_at` e exclusão lógica, o que facilita mesclar os dados.
+- Sincronia em tempo real (Supabase Realtime) e app de celular.
 - Importar a biblioteca da Steam.
 - Tempo médio para zerar (HowLongToBeat) para avaliar se uma meta é realista.
 - Notificações de prazo de metas e um sorteador de "o que jogar agora".

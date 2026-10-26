@@ -31,6 +31,17 @@ jobs:
 
       - run: npm ci
 
+      - name: Inject public Supabase config
+        shell: pwsh
+        run: |
+          @"
+          VITE_SUPABASE_URL=$env:VITE_SUPABASE_URL
+          VITE_SUPABASE_ANON_KEY=$env:VITE_SUPABASE_ANON_KEY
+          "@ | Set-Content .env
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+
       - run: npx tauri build
 
       - name: Collect installer
