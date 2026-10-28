@@ -5,6 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:app:allow-version",
     "core:window:allow-set-theme",
     "sql:default",
     "sql:allow-execute",
@@ -12,6 +13,8 @@
     "dialog:allow-open",
     "dialog:allow-ask",
     "dialog:allow-message",
-    "opener:default"
+    "opener:default",
+    "process:allow-restart",
+    "updater:default"
   ]
 }

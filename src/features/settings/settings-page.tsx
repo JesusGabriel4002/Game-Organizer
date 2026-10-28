@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getVersion } from "@tauri-apps/api/app";
 import { appConfigDir } from "@tauri-apps/api/path";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { CheckCircle2, Download, Upload } from "lucide-react";
@@ -103,6 +104,7 @@ function BackupSection() {
 export function SettingsPage() {
   const { theme, setTheme } = useUi();
   const dataDir = useQuery({ queryKey: ["app-config-dir"], queryFn: appConfigDir });
+  const version = useQuery({ queryKey: ["app-version"], queryFn: getVersion });
 
   return (
     <PageContainer>
@@ -142,6 +144,10 @@ export function SettingsPage() {
 
       <Section title="Dados locais" description="Seu banco SQLite e as chaves ficam nesta pasta (fora do repositório):">
         <code className="block rounded-md bg-accent px-3 py-2 text-xs">{dataDir.data ?? "..."}</code>
+      </Section>
+
+      <Section title="Aplicativo">
+        <p className="text-sm text-muted-foreground">Versão {version.data ?? "…"}</p>
       </Section>
     </PageContainer>
   );

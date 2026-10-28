@@ -42,7 +42,10 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
-      - run: npx tauri build
+      - name: Build
+        run: npx tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
       - name: Collect installer
         id: collect
@@ -81,22 +84,49 @@ jobs:
           parameters: |
             version: ${{ toJSON(steps.collect.outputs.version) }}
 
-      - name: Pick files to publish
+      - name: Sign updater manifest
         id: files
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          $dir = if ("${{ env.SIGNPATH_ENABLED }}" -eq "true") { "signed" } else { "out" }
-          "dir=$dir" >> $env:GITHUB_OUTPUT
+          $src = if ("${{ env.SIGNPATH_ENABLED }}" -eq "true") { "signed" } else { "out" }
+          $found = Get-ChildItem $src -Recurse -Filter *-setup.exe | Select-Object -First 1
+          if (-not $found) { throw "Instalador não encontrado em $src" }
+          $publish = Join-Path (Get-Location) "publish"
+          New-Item -ItemType Directory -Force $publish | Out-Null
+          $exePath = Join-Path $publish $found.Name
+          Copy-Item $found.FullName $exePath -Force
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          npx tauri signer sign $exePath --app-version $version
+          if ($LASTEXITCODE -ne 0) { throw "Falha ao assinar o atualizador" }
+          $sig = (Get-Content "$exePath.sig" -Raw).Trim()
+          $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$($found.Name)"
+          $manifest = [ordered]@{
+            version = $version
+            notes = "Game Organizer $version"
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = [ordered]@{
+              "windows-x86_64-nsis" = [ordered]@{ signature = $sig; url = $url }
+              "windows-x86_64" = [ordered]@{ signature = $sig; url = $url }
+            }
+          }
+          $json = $manifest | ConvertTo-Json -Depth 5
+          [System.IO.File]::WriteAllText((Join-Path $publish "latest.json"), $json)
+          "dir=publish" >> $env:GITHUB_OUTPUT
 
       - uses: softprops/action-gh-release@v2
         with:
           name: Game Organizer ${{ github.ref_name }}
-          files: ${{ steps.files.outputs.dir }}/*.exe
+          files: |
+            ${{ steps.files.outputs.dir }}/*.exe
+            ${{ steps.files.outputs.dir }}/latest.json
+            ${{ steps.files.outputs.dir }}/*.sig
           generate_release_notes: true
           body: |
-            **Como instalar:** baixe o arquivo `*-setup.exe` abaixo e execute.
+            **Como instalar:** baixe o arquivo `*-setup.exe` abaixo e execute. Quem já tem esta versão ou uma mais nova recebe a atualização ao abrir o app.
 
-            Os dados ficam salvos localmente (SQLite); nada vai para a nuvem. A busca de jogos consulta o IGDB por um servidor intermediário apenas quando você pesquisa um jogo.
+            Os dados ficam neste computador. Com uma conta, a biblioteca também sincroniza na nuvem. A busca de jogos consulta o IGDB por um servidor intermediário apenas quando você pesquisa um jogo.
 
             ### Code signing policy
             Veja a [política de assinatura de código](https://github.com/${{ github.repository }}#code-signing-policy).

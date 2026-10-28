@@ -1,9 +1,13 @@
 import { useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
 import { Outlet } from "react-router-dom";
 import { useIgdbSync } from "@/lib/queries";
 import { useCloudSync } from "@/lib/use-cloud-sync";
 import { useUi, usePalette } from "@/lib/store";
+import { toast } from "@/lib/toast";
+import { errorMessage } from "@/lib/utils";
 import { Sidebar } from "./sidebar";
 import { Toaster } from "./toaster";
 import { CommandPalette } from "@/features/search/command-palette";
@@ -40,11 +44,37 @@ function usePaletteShortcut() {
   }, [setOpen]);
 }
 
+function useAutoUpdate() {
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const update = await check();
+        if (!update || cancelled) return;
+        toast.info("Baixando atualização…");
+        try {
+          await update.downloadAndInstall();
+          if (!cancelled) await relaunch();
+        } catch (err) {
+          if (!cancelled) toast.error(errorMessage(err));
+        }
+      } catch {
+        // Sem rede ou sem manifesto: o app abre normal.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+}
+
 export function AppLayout() {
   useThemeClass();
   usePaletteShortcut();
   useIgdbSync();
   useCloudSync();
+  useAutoUpdate();
   return (
     <div className="flex h-full overflow-hidden border-t border-border">
       <Sidebar />
