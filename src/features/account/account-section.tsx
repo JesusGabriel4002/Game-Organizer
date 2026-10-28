@@ -37,6 +37,7 @@ export function AccountSection() {
   const qc = useQueryClient();
   const sync = useSyncStatus();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [ready, setReady] = useState(!isSupabaseConfigured());
   const [authOpen, setAuthOpen] = useState(false);
   const [choiceUser, setChoiceUser] = useState<AuthUser | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -45,7 +46,10 @@ export function AccountSection() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
-    void initAuth().then(setUser).catch(() => setUser(null));
+    void initAuth()
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setReady(true));
   }, []);
 
   const invalidate = () => Promise.all([keys.library, keys.categories, keys.goals].map((k) => qc.invalidateQueries({ queryKey: k })));
@@ -108,15 +112,12 @@ export function AccountSection() {
 
   return (
     <div className="space-y-3">
-      {!user ? (
-        <>
-          <p className="text-sm text-muted-foreground">
-            Opcional. Sem conta o app funciona só neste computador. Com conta, a biblioteca sincroniza quando houver internet.
-          </p>
-          <Button variant="default" onClick={() => setAuthOpen(true)}>
-            Entrar ou criar conta
-          </Button>
-        </>
+      {!ready ? (
+        <p className="text-sm text-muted-foreground">Verificando a conta…</p>
+      ) : !user ? (
+        <Button variant="default" onClick={() => setAuthOpen(true)}>
+          Entrar ou criar conta
+        </Button>
       ) : (
         <>
           <div className="flex items-start gap-3 rounded-md border border-border px-3 py-2">

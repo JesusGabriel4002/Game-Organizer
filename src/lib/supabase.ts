@@ -19,12 +19,12 @@ const keyringStorage: SupportedStorage = {
   setItem: (key, value) => {
     if (key !== "sb-session") return;
     memorySession = value;
-    void secureStore.set(value).catch(() => {});
+    return secureStore.set(value);
   },
   removeItem: (key) => {
     if (key !== "sb-session") return;
     memorySession = null;
-    void secureStore.clear().catch(() => {});
+    return secureStore.clear();
   },
 };
 
