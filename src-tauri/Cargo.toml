@@ -1,6 +1,6 @@
 [package]
 name = "game-organizer"
-version = "0.3.1"
+version = "0.3.2"
 description = "Organizador pessoal de jogos"
 edition = "2021"
 license = "MIT"
