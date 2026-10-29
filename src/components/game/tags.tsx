@@ -113,12 +113,15 @@ export function CategoryTags({
   className,
   /** From this many tags on, use two rows (2 → one per row; 3+ → first two, then the rest). */
   wrapAt,
+  /** Wrap and ellipsize inside a narrow card instead of painting past its edge. */
+  fit,
 }: {
   ids: string[];
   categories: Category[];
   max?: number;
   className?: string;
   wrapAt?: number;
+  fit?: boolean;
 }) {
   const list = ids.map((id) => categories.find((c) => c.id === id)).filter((c): c is Category => !!c);
   const shown = max ? list.slice(0, max) : list;
@@ -128,8 +131,19 @@ export function CategoryTags({
   const firstCount = split ? (shown.length === 2 ? 1 : 2) : shown.length;
 
   return (
-    <div className={cn(split ? "flex flex-col gap-1" : "flex flex-nowrap content-start gap-1", className)}>
-      {split ? (
+    <div
+      className={cn(
+        fit ? "flex w-full min-w-0 flex-wrap gap-1" : split ? "flex flex-col gap-1" : "flex flex-nowrap content-start gap-1",
+        className,
+      )}
+    >
+      {fit ? (
+        shown.map((c) => (
+          <Tag key={c.id} color={c.color} className="block max-w-full min-w-0 shrink-0">
+            {c.name}
+          </Tag>
+        ))
+      ) : split ? (
         <>
           <TagRow items={shown.slice(0, firstCount)} />
           <TagRow items={shown.slice(firstCount)} />
@@ -141,7 +155,7 @@ export function CategoryTags({
           </Tag>
         ))
       )}
-      {extra > 0 && <span className="shrink-0 text-xs text-muted-foreground">+{extra}</span>}
+      {extra > 0 && <span className="shrink-0 text-xs leading-5 text-muted-foreground">+{extra}</span>}
     </div>
   );
 }

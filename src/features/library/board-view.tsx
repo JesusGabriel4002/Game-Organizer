@@ -22,7 +22,7 @@ function Card({ entry, categories, dragging }: { entry: LibraryEntry; categories
   return (
     <div
       className={cn(
-        "flex gap-2.5 rounded-md border border-border bg-background p-2 shadow-sm transition-shadow hover:bg-accent/40",
+        "flex gap-2.5 overflow-hidden rounded-md border border-border bg-background p-2 shadow-sm transition-shadow hover:bg-accent/40",
         dragging && "rotate-1 shadow-xl",
       )}
     >
@@ -30,7 +30,7 @@ function Card({ entry, categories, dragging }: { entry: LibraryEntry; categories
       <div className="min-w-0 flex-1 space-y-1">
         <p className="line-clamp-2 text-sm font-medium leading-snug">{entry.name}</p>
         {entry.platform && <p className="text-xs text-muted-foreground">{entry.platform}</p>}
-        <CategoryTags ids={entry.categoryIds} categories={categories} max={3} />
+        <CategoryTags ids={entry.categoryIds} categories={categories} max={3} fit />
       </div>
     </div>
   );
