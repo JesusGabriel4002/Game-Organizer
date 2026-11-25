@@ -6,6 +6,8 @@ import { CategoriesPage } from "@/features/categories/categories-page";
 import { GoalsPage } from "@/features/goals/goals-page";
 import { StatsPage } from "@/features/stats/stats-page";
 import { SettingsPage } from "@/features/settings/settings-page";
+import { NextPage } from "@/features/next/next-page";
+import { RecapPage } from "@/features/recap/recap-page";
 
 export function App() {
   return (
@@ -19,6 +21,8 @@ export function App() {
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="stats" element={<StatsPage />} />
+          <Route path="next" element={<NextPage />} />
+          <Route path="recap" element={<RecapPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

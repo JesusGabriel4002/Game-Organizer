@@ -1,7 +1,7 @@
 import { Command } from "cmdk";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, KeyRound, Library, Loader2, PenLine, Search, Settings, Tags, Target } from "lucide-react";
+import { BarChart3, Dices, KeyRound, Library, Loader2, PenLine, Search, Settings, Sparkles, Tags, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { igdb } from "@/lib/api";
@@ -122,7 +122,9 @@ export function CommandPalette() {
   const navItems = [
     { label: "Todos os jogos", icon: <Library />, path: "/" },
     { label: "Metas", icon: <Target />, path: "/goals" },
+    { label: "O que jogar agora?", icon: <Dices />, path: "/next" },
     { label: "Estatísticas", icon: <BarChart3 />, path: "/stats" },
+    { label: "Retrospectiva do ano", icon: <Sparkles />, path: "/recap" },
     { label: "Categorias", icon: <Tags />, path: "/categories" },
     { label: "Configurações", icon: <Settings />, path: "/settings" },
   ];

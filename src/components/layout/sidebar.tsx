@@ -6,6 +6,7 @@ import {
   ChevronsRight,
   CircleCheck,
   CirclePause,
+  Dices,
   Gift,
   CirclePlay,
   Hourglass,
@@ -13,6 +14,7 @@ import {
   Moon,
   Plus,
   Search,
+  Sparkles,
   Settings,
   Sun,
   Tags,
@@ -126,7 +128,9 @@ export function Sidebar() {
 
         <SectionLabel>Acompanhamento</SectionLabel>
         <Item to="/goals" icon={<Target />} label="Metas" />
+        <Item to="/next" icon={<Dices />} label="O que jogar?" />
         <Item to="/stats" icon={<BarChart3 />} label="Estatísticas" />
+        <Item to="/recap" icon={<Sparkles />} label="Retrospectiva" />
 
         <div className="group/cat mb-1 mt-4 flex items-center px-2">
           <span className="flex-1 text-xs font-medium text-muted-foreground">Categorias</span>
