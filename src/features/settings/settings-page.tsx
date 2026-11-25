@@ -108,7 +108,7 @@ function CoverCacheButton() {
     try {
       const removed = await covers.clear();
       reset();
-      toast.info(`${removed} ${removed === 1 ? "capa apagada" : "capas apagadas"}. Elas serão baixadas de novo quando a internet estiver disponível.`);
+      toast.info(`${removed} ${removed === 1 ? "capa apagada" : "capas apagadas"}. Elas serão baixadas de novo na próxima vez que o app abrir.`);
     } catch (err) {
       toast.error(errorMessage(err));
     }
