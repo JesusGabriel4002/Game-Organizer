@@ -13,10 +13,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { STATUS_META } from "@/lib/constants";
 import { useCategories, useUpdateEntry } from "@/lib/queries";
-import { STATUSES, type Category, type GameStatus, type LibraryEntry } from "@/lib/types";
+import type { Category, GameStatus, LibraryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Cover } from "@/components/game/cover";
 import { CategoryTags, StatusTag } from "@/components/game/tags";
+
+/** Lista de desejos and Abandonado stay out of the board; they have their own lists in the sidebar. */
+const BOARD_STATUSES: GameStatus[] = ["backlog", "playing", "completed"];
 
 function Card({ entry, categories, dragging }: { entry: LibraryEntry; categories: Category[]; dragging?: boolean }) {
   return (
@@ -95,7 +98,7 @@ export function BoardView({ entries }: { entries: LibraryEntry[] }) {
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActive(null)}>
       <div className="flex gap-3 overflow-x-auto pb-4">
-        {STATUSES.map((s) => (
+        {BOARD_STATUSES.map((s) => (
           <Column key={s} status={s} entries={entries.filter((e) => e.status === s)} categories={categories} />
         ))}
       </div>
