@@ -21,4 +21,4 @@ const cargo = readFileSync(cargoFile, "utf8").replace(/^version = "[^"]*"/m, `ve
 writeFileSync(cargoFile, cargo);
 
 console.log(`Versão atualizada para ${version} em package.json, tauri.conf.json e Cargo.toml.`);
-console.log(`Próximo passo: git commit -am "v${version}" && git tag v${version} && git push origin main --tags`);
+console.log(`Próximo passo: git commit -am "v${version}" && git push origin main (a release sai sozinha)`);
