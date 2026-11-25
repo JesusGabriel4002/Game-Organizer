@@ -8,11 +8,8 @@ import {
   CirclePause,
   Gift,
   CirclePlay,
-  Cloud,
-  CloudOff,
   Hourglass,
   Library,
-  Loader2,
   Moon,
   Plus,
   Search,
@@ -25,8 +22,7 @@ import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { TAG_COLORS } from "@/lib/constants";
 import { useCategories, useLibrary } from "@/lib/queries";
-import { isSupabaseConfigured } from "@/lib/supabase";
-import { useSyncStatus } from "@/lib/use-cloud-sync";
+import { SyncIndicator } from "./sync-indicator";
 import { usePalette, useUi } from "@/lib/store";
 import type { GameStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -73,7 +69,6 @@ export function Sidebar() {
   const { data: categories = [] } = useCategories();
   const { theme, setTheme, sidebarCollapsed, toggleSidebar } = useUi();
   const setPaletteOpen = usePalette((s) => s.setOpen);
-  const sync = useSyncStatus();
 
   const [showAllCategories, setShowAllCategories] = useState(false);
 
@@ -161,29 +156,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-border p-2">
-        {isSupabaseConfigured() && sync.status !== "disabled" && (
-          <div
-            className="mb-1 flex h-7 items-center gap-2 px-2 text-xs text-muted-foreground [&_svg]:size-3.5"
-            title={sync.error ?? undefined}
-          >
-            {sync.status === "offline" ? (
-              <CloudOff />
-            ) : sync.status === "syncing" ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Cloud className={sync.pending ? "" : "text-[#4dab9a]"} />
-            )}
-            {sync.status === "offline"
-              ? "Offline"
-              : sync.status === "syncing"
-                ? "Sincronizando…"
-                : sync.pending > 0
-                  ? `${sync.pending} pendente${sync.pending === 1 ? "" : "s"}`
-                  : sync.status === "error"
-                    ? "Erro na sync"
-                    : "Sincronizado"}
-          </div>
-        )}
+        <SyncIndicator />
         <Item to="/settings" icon={<Settings />} label="Configurações" />
         <button
           onClick={() => setTheme(isDark ? "light" : "dark")}
