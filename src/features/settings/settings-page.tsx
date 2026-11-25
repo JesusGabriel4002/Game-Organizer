@@ -3,7 +3,8 @@ import { getVersion } from "@tauri-apps/api/app";
 import { appConfigDir } from "@tauri-apps/api/path";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { CheckCircle2, Download, Upload } from "lucide-react";
-import { files, igdb } from "@/lib/api";
+import { covers, files, igdb } from "@/lib/api";
+import { useResetCoverCache } from "@/lib/covers";
 import { exportBackup, getSetting, importBackup, setSetting, type Backup } from "@/lib/db";
 import { useUi, type Theme } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -101,6 +102,24 @@ function BackupSection() {
   );
 }
 
+function CoverCacheButton() {
+  const reset = useResetCoverCache();
+  const clear = async () => {
+    try {
+      const removed = await covers.clear();
+      reset();
+      toast.info(`${removed} ${removed === 1 ? "capa apagada" : "capas apagadas"}. Elas serão baixadas de novo quando a internet estiver disponível.`);
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
+  };
+  return (
+    <Button variant="outline" onClick={clear}>
+      Limpar capas salvas
+    </Button>
+  );
+}
+
 export function SettingsPage() {
   const { theme, setTheme } = useUi();
   const dataDir = useQuery({ queryKey: ["app-config-dir"], queryFn: appConfigDir });
@@ -144,6 +163,12 @@ export function SettingsPage() {
 
       <Section title="Dados locais" description="Seu banco SQLite e as chaves ficam nesta pasta (fora do repositório):">
         <code className="block rounded-md bg-accent px-3 py-2 text-xs">{dataDir.data ?? "..."}</code>
+        <p className="mt-3 text-sm text-muted-foreground">
+          As capas ficam salvas no computador para aparecerem mesmo sem internet.
+        </p>
+        <div className="mt-2">
+          <CoverCacheButton />
+        </div>
       </Section>
 
       <Section title="Aplicativo">

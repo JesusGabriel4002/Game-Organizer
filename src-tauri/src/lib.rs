@@ -80,6 +80,8 @@ pub fn run() {
             commands::igdb::search_games,
             commands::igdb::popular_games,
             commands::igdb::game_details,
+            commands::covers::cache_covers,
+            commands::covers::clear_cover_cache,
             commands::files::write_text_file,
             commands::files::read_text_file,
             commands::secure_store::secure_store_get,

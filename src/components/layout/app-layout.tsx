@@ -4,6 +4,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { Outlet } from "react-router-dom";
 import { useIgdbSync } from "@/lib/queries";
+import { useCoverCache } from "@/lib/covers";
 import { useCloudSync } from "@/lib/use-cloud-sync";
 import { useUi, usePalette } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -73,6 +74,7 @@ export function AppLayout() {
   useThemeClass();
   usePaletteShortcut();
   useIgdbSync();
+  useCoverCache();
   useCloudSync();
   useAutoUpdate();
   return (

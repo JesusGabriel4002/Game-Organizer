@@ -35,6 +35,7 @@ import { CompletionField } from "@/components/game/completion-field";
 import { ScoreBadge } from "@/components/game/score-badge";
 import { DateField, NumberField, RatingField, TextField } from "@/components/game/fields";
 import { CategoryPicker, StatusSelect, Tag } from "@/components/game/tags";
+import { useLocalCover } from "@/lib/covers";
 import { NotesEditor } from "./notes-editor";
 import { PlaySessions } from "./play-sessions";
 
@@ -60,6 +61,7 @@ export function GamePage() {
   const deleteEntry = useDeleteEntry();
   const [coverOpen, setCoverOpen] = useState(false);
   const [coverDraft, setCoverDraft] = useState("");
+  const backdrop = useLocalCover(entry?.coverUrl ?? null);
 
   if (isLoading) return null;
   if (!entry) {
@@ -87,9 +89,7 @@ export function GamePage() {
   return (
     <div>
       <div className="relative h-44 overflow-hidden bg-accent">
-        {entry.coverUrl && (
-          <img src={entry.coverUrl} alt="" className="size-full scale-110 object-cover opacity-60 blur-2xl" />
-        )}
+        {backdrop && <img src={backdrop} alt="" className="size-full scale-110 object-cover opacity-60 blur-2xl" />}
         <div className="absolute left-4 top-3 flex gap-1">
           <Button size="sm" variant="subtle" className="bg-background/70 backdrop-blur" onClick={() => navigate(-1)}>
             <ArrowLeft /> Voltar

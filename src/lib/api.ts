@@ -11,6 +11,12 @@ export const igdb = {
   details: (ids: number[]) => invoke<IgdbDetails[]>("game_details", { ids }),
 };
 
+export const covers = {
+  /** `url → local path` for covers on disk; downloads the missing ones. */
+  cache: (urls: string[]) => invoke<Record<string, string>>("cache_covers", { urls }),
+  clear: () => invoke<number>("clear_cover_cache"),
+};
+
 export const files = {
   write: (path: string, contents: string) => invoke<void>("write_text_file", { path, contents }),
   read: (path: string) => invoke<string>("read_text_file", { path }),

@@ -20,7 +20,11 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://*.supabase.co https://eftzzzjksokmzkyntmzn.supabase.co wss://*.supabase.co https://game-organizer-igdb.contato-jgleiva.workers.dev https://github.com https://objects.githubusercontent.com https://github-releases.githubusercontent.com https://release-assets.githubusercontent.com"
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/covers/*"]
+      },
+      "csp": "default-src 'self'; img-src 'self' data: https: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://*.supabase.co https://eftzzzjksokmzkyntmzn.supabase.co wss://*.supabase.co https://game-organizer-igdb.contato-jgleiva.workers.dev https://github.com https://objects.githubusercontent.com https://github-releases.githubusercontent.com https://release-assets.githubusercontent.com"
     }
   },
   "bundle": {
