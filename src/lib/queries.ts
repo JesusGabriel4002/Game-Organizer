@@ -257,3 +257,34 @@ export function useDeleteSession() {
     onSuccess: () => invalidate(keys.sessions, keys.library),
   });
 }
+
+// ---------------------------------------------------------------- bulk edits (table selection)
+
+export function useBulkUpdate() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ entries, patch }: { entries: LibraryEntry[]; patch: EntryPatch }) => {
+      for (const entry of entries) await db.updateEntry(entry.id, patch, entry);
+    },
+    onSettled: () => invalidate(keys.library),
+  });
+}
+
+export function useBulkCategory() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ entryIds, categoryId, on }: { entryIds: string[]; categoryId: string; on: boolean }) =>
+      db.toggleCategoryOnEntries(entryIds, categoryId, on),
+    onSettled: () => invalidate(keys.library),
+  });
+}
+
+export function useBulkDelete() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (entryIds: string[]) => {
+      for (const id of entryIds) await db.deleteEntry(id);
+    },
+    onSettled: () => invalidate(keys.library, keys.goals, keys.sessions),
+  });
+}

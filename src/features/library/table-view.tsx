@@ -39,8 +39,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Cover } from "@/components/game/cover";
 import { NumberField, RatingField, TextField } from "@/components/game/fields";
 import { CATEGORY_TAGS_TWO_LINES, CategoryPicker, StatusSelect, Tag } from "@/components/game/tags";
+import { BulkBar } from "./bulk-bar";
 
 const col = createColumnHelper<LibraryEntry>();
+
+const checkboxClass = "size-3.5 cursor-pointer accent-[var(--primary)]";
 
 /** Status then average hours — applied on open, without showing sort arrows. */
 const DEFAULT_SORTING: SortingState = [
@@ -133,6 +136,16 @@ export function TableView({
   const { mutate: setCategories } = useSetEntryCategories();
   const [sorting, setSorting] = useState<SortingState>(DEFAULT_SORTING);
   const [addOpen, setAddOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const selectedEntries = useMemo(() => entries.filter((e) => selected.has(e.id)), [entries, selected]);
+  const allSelected = entries.length > 0 && selectedEntries.length === entries.length;
+  const toggleRow = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const tableColumns = useUi((s) => s.tableColumns);
   const setTableColumns = useUi((s) => s.setTableColumns);
   const columnSizing = useUi((s) => s.tableColumnSizes);
@@ -142,6 +155,23 @@ export function TableView({
 
   const allColumns = useMemo(() => {
     const defs: ColumnDef<LibraryEntry, any>[] = [
+      col.display({
+        id: "select",
+        size: 36,
+        enableSorting: false,
+        enableResizing: false,
+        cell: ({ row }) => (
+          <div className="flex justify-center">
+            <input
+              type="checkbox"
+              aria-label={`Selecionar ${row.original.name}`}
+              checked={selected.has(row.original.id)}
+              onChange={() => toggleRow(row.original.id)}
+              className={cn(checkboxClass, !selected.size && "opacity-0 group-hover:opacity-100 focus:opacity-100")}
+            />
+          </div>
+        ),
+      }),
       col.accessor("name", {
         header: heading(<Gamepad2 />, "Nome"),
         size: 340,
@@ -264,15 +294,15 @@ export function TableView({
       }),
     ];
     return new Map(defs.map((d) => [d.id ?? (d as { accessorKey: string }).accessorKey, d]));
-  }, [navigate, updateEntry, setCategories, completedOnly]);
+  }, [navigate, updateEntry, setCategories, completedOnly, selected]);
 
   const visibleIds = tableColumns.filter((id) => allColumns.has(id));
   const hiddenIds = Object.keys(COLUMN_LABELS).filter((id) => !visibleIds.includes(id));
   // Keep every column registered so default sorts (status, tempo) work even if a column is hidden.
-  const columnOrder = useMemo(() => ["name", ...visibleIds, ...hiddenIds], [visibleIds.join(), hiddenIds.join()]);
+  const columnOrder = useMemo(() => ["select", "name", ...visibleIds, ...hiddenIds], [visibleIds.join(), hiddenIds.join()]);
   const columns = useMemo(() => columnOrder.map((id) => allColumns.get(id)!), [allColumns, columnOrder]);
   const columnVisibility = useMemo(
-    () => Object.fromEntries(columnOrder.map((id) => [id, id === "name" || visibleIds.includes(id)])),
+    () => Object.fromEntries(columnOrder.map((id) => [id, id === "select" || id === "name" || visibleIds.includes(id)])),
     [columnOrder, visibleIds.join()],
   );
 
@@ -311,10 +341,14 @@ export function TableView({
     const nextVisible = arrayMove(visibleIds, from, to);
     setTableColumns(nextVisible);
     // Leftmost of the two active sorts becomes primary after a column move.
-    setSorting((prev) => prioritizeLeftmostSort(prev, ["name", ...nextVisible, ...hiddenIds]));
+    setSorting((prev) => prioritizeLeftmostSort(prev, ["select", "name", ...nextVisible, ...hiddenIds]));
   };
 
   return (
+    <>
+    {selectedEntries.length > 0 && (
+      <BulkBar selected={selectedEntries} platforms={platforms} onClear={() => setSelected(new Set())} />
+    )}
     <div className="overflow-x-auto rounded-lg border border-border">
       <datalist id="platform-options">
         {[...new Set([...platforms, ...COMMON_PLATFORMS])].map((p) => (
@@ -329,13 +363,30 @@ export function TableView({
                 <SortableContext items={visibleIds} strategy={horizontalListSortingStrategy}>
                   {hg.headers
                     .filter((h) => h.column.getIsVisible())
-                    .map((h) => (
+                    .map((h) =>
+                      h.column.id === "select" ? (
+                        <th key={h.id} style={{ width: h.getSize() }} className="border-r border-border bg-background px-1">
+                          <div className="flex justify-center">
+                            <input
+                              type="checkbox"
+                              aria-label="Selecionar todos"
+                              checked={allSelected}
+                              ref={(el) => {
+                                if (el) el.indeterminate = selectedEntries.length > 0 && !allSelected;
+                              }}
+                              onChange={() => setSelected(allSelected ? new Set() : new Set(entries.map((e) => e.id)))}
+                              className={checkboxClass}
+                            />
+                          </div>
+                        </th>
+                      ) : (
                       <SortableHeader
                         key={h.id}
                         header={h}
                         onRemove={h.column.id === "name" ? undefined : () => setTableColumns(visibleIds.filter((id) => id !== h.column.id))}
                       />
-                    ))}
+                      ),
+                    )}
                 </SortableContext>
                 <th className="w-10 px-1 py-1.5">
                   {hiddenIds.length > 0 && (
@@ -370,7 +421,13 @@ export function TableView({
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="group h-12 border-b border-border last:border-b-0 hover:bg-accent/50">
+              <tr
+                key={row.id}
+                className={cn(
+                  "group h-12 border-b border-border last:border-b-0 hover:bg-accent/50",
+                  selected.has(row.id) && "bg-primary/5",
+                )}
+              >
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
@@ -387,5 +444,6 @@ export function TableView({
         </table>
       </DndContext>
     </div>
+    </>
   );
 }

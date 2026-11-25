@@ -336,6 +336,28 @@ export async function setEntryCategories(entryId: string, categoryIds: string[])
   }
 }
 
+/** Adds (`on`) or removes one category on several games at once, keeping their other categories. */
+export async function toggleCategoryOnEntries(entryIds: string[], categoryId: string, on: boolean) {
+  const db = await getDb();
+  const now = nowIso();
+  for (const entryId of entryIds) {
+    if (on) {
+      await db.execute(
+        `INSERT INTO user_game_categories (user_game_id, category_id, created_at, updated_at) VALUES ($1, $2, $3, $3)
+         ON CONFLICT (user_game_id, category_id) DO UPDATE SET deleted_at = NULL, updated_at = $3
+         WHERE user_game_categories.deleted_at IS NOT NULL`,
+        [entryId, categoryId, now],
+      );
+    } else {
+      await db.execute(
+        `UPDATE user_game_categories SET deleted_at = $1, updated_at = $1
+          WHERE user_game_id = $2 AND category_id = $3 AND deleted_at IS NULL`,
+        [now, entryId, categoryId],
+      );
+    }
+  }
+}
+
 // ---------------------------------------------------------------- categories
 
 interface CategoryRow {
