@@ -20,6 +20,7 @@ import {
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { COMMON_PLATFORMS } from "@/lib/constants";
+import { CAN_TARGET } from "@/lib/types";
 import { useDeleteEntry, useEntry, useGoals, useSetEntryCategories, useUpdateEntry } from "@/lib/queries";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
@@ -167,7 +168,7 @@ export function GamePage() {
           <Property icon={<ListChecks />} label="Status">
             <StatusSelect value={entry.status} onChange={(status) => updateEntry({ entry, patch: { status } })} />
           </Property>
-          {entry.status !== "completed" && (
+          {CAN_TARGET.includes(entry.status) && (
             <Property icon={<Flag />} label="Zerar até">
               <Select
                 value={entry.targetYear ?? ""}

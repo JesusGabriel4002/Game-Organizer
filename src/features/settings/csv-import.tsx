@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 
 const COLUMNS: { name: string; description: string }[] = [
   { name: "nome", description: "Obrigatório. O nome do jogo, buscado no IGDB para trazer capa, gênero e notas." },
-  { name: "status", description: "pra zerar, jogando ou zerado. Vazio vira “Pra zerar”." },
+  { name: "status", description: "pra zerar, jogando, zerado, lista de desejos ou abandonado. Vazio vira “Pra zerar”." },
   { name: "ano", description: "Se zerado: o ano em que zerou. Se pra zerar: até quando quer zerar." },
   { name: "plataforma", description: "PC, PS5, Switch..." },
   { name: "nota", description: "De 0 a 5 estrelas." },

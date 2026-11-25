@@ -55,7 +55,7 @@ function sortLabel(sort: SortKey, viewMode: ViewMode) {
   return SORTS[sort].label;
 }
 
-const STATUS_ICONS: Record<GameStatus, string> = { backlog: "⏳", playing: "🎮", completed: "🏆" };
+const STATUS_ICONS: Record<GameStatus, string> = { wishlist: "🎁", backlog: "⏳", playing: "🎮", completed: "🏆", dropped: "💤" };
 
 export function LibraryPage() {
   const { status, categoryId } = useParams<{ status?: GameStatus; categoryId?: string }>();

@@ -1,9 +1,11 @@
 import type { GameStatus, TagColor } from "./types";
 
 export const STATUS_META: Record<GameStatus, { label: string; color: TagColor; dot: string }> = {
+  wishlist: { label: "Lista de desejos", color: "purple", dot: "bg-[#9065b0]" },
   backlog: { label: "Pra zerar", color: "orange", dot: "bg-[#d9730d]" },
   playing: { label: "Jogando", color: "blue", dot: "bg-[#2383e2]" },
   completed: { label: "Zerado", color: "green", dot: "bg-[#4dab9a]" },
+  dropped: { label: "Abandonado", color: "gray", dot: "bg-[#9b9a97]" },
 };
 
 export const TAG_COLORS: Record<TagColor, { label: string; tag: string; dot: string }> = {

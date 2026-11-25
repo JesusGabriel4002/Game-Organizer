@@ -1,7 +1,7 @@
 import type { GameStatus, LibraryEntry } from "./types";
 
-/** Jogando → Pra zerar → Zerado. */
-export const STATUS_SORT_ORDER: Record<GameStatus, number> = { playing: 0, backlog: 1, completed: 2 };
+/** Jogando → Pra zerar → Lista de desejos → Zerado → Abandonado. */
+export const STATUS_SORT_ORDER: Record<GameStatus, number> = { playing: 0, backlog: 1, wishlist: 2, completed: 3, dropped: 4 };
 
 /** Default list order: status first, then average hours (higher further down). */
 export function defaultLibrarySort(a: LibraryEntry, b: LibraryEntry) {

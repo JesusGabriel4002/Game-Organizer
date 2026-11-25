@@ -86,7 +86,7 @@ export function computeProgress(goal: Goal, library: LibraryEntry[], today = new
   if (daysLeft < 0) return { state: "failed", current: 0, target: 1, percent: 0, daysLeft, entries: [entry], hint: "Prazo encerrado" };
 
   const percent = entry.status === "playing" ? 50 : 0;
-  const hint = entry.status === "playing" ? "Jogando agora" : "Ainda não começou";
+  const hint = entry.status === "playing" ? "Jogando agora" : entry.status === "dropped" ? "Abandonado" : "Ainda não começou";
   return { state: daysLeft <= 14 ? "behind" : "active", current: 0, target: 1, percent, daysLeft, entries: [entry], hint };
 }
 

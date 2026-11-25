@@ -51,6 +51,12 @@ fn migrations() -> Vec<Migration> {
             sql: normalized(include_str!("../migrations/006_sync.sql")),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "statuses_sessions",
+            sql: normalized(include_str!("../migrations/007_statuses_sessions.sql")),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

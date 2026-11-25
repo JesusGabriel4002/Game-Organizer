@@ -1,6 +1,7 @@
 import Database from "@tauri-apps/plugin-sql";
 import { matchCategories } from "./auto-categories";
 import { newId, nowIso, parseJsonArray } from "./utils";
+import { NOT_STARTED } from "./types";
 import type { AddOptions, Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbDetails, IgdbGame, LibraryEntry, TagColor } from "./types";
 
 const DB_URL = "sqlite:games.db";
@@ -115,7 +116,7 @@ function statusDates(status: GameStatus, completion?: CompletionInput) {
     };
   }
   return {
-    started_at: status === "backlog" ? null : today(),
+    started_at: NOT_STARTED.includes(status) ? null : today(),
     completed_at: status === "completed" ? today() : null,
     completed_year: status === "completed" ? new Date().getFullYear() : null,
   };
@@ -189,7 +190,7 @@ export async function updateEntry(id: string, patch: EntryPatch, current?: Libra
       cols.completed_at = today();
       cols.completed_year = new Date().getFullYear();
     }
-    if (patch.status !== "backlog" && patch.startedAt === undefined && !current?.startedAt) cols.started_at = today();
+    if (!NOT_STARTED.includes(patch.status) && patch.startedAt === undefined && !current?.startedAt) cols.started_at = today();
     if (patch.status !== "completed" && !setsCompletion) {
       cols.completed_at = null;
       cols.completed_year = null;

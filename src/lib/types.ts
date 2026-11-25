@@ -1,6 +1,12 @@
-export type GameStatus = "backlog" | "playing" | "completed";
+export type GameStatus = "wishlist" | "backlog" | "playing" | "completed" | "dropped";
 
-export const STATUSES: GameStatus[] = ["backlog", "playing", "completed"];
+export const STATUSES: GameStatus[] = ["wishlist", "backlog", "playing", "completed", "dropped"];
+
+/** Statuses where the game was never started, so no start date is filled in. */
+export const NOT_STARTED: GameStatus[] = ["wishlist", "backlog"];
+
+/** Statuses that can have a "zerar até" year. */
+export const CAN_TARGET: GameStatus[] = ["wishlist", "backlog", "playing"];
 
 export interface LibraryEntry {
   id: string;

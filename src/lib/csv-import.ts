@@ -13,9 +13,11 @@ export const CSV_TEMPLATE = [
 ].join("\r\n");
 
 const STATUS_EXPORT: Record<GameStatus, string> = {
+  wishlist: "lista de desejos",
   backlog: "pra zerar",
   playing: "jogando",
   completed: "zerado",
+  dropped: "abandonado",
 };
 
 function csvCell(value: string | number | null | undefined) {
@@ -70,9 +72,11 @@ const COLUMN_ALIASES: Record<keyof CsvRow, string[]> = {
 };
 
 const STATUS_ALIASES: Record<GameStatus, string[]> = {
-  backlog: ["pra zerar", "para zerar", "a zerar", "zerar", "quero zerar", "backlog", "wishlist", "fila"],
+  backlog: ["pra zerar", "para zerar", "a zerar", "zerar", "quero zerar", "backlog", "fila"],
+  wishlist: ["lista de desejos", "desejo", "desejos", "wishlist", "quero comprar", "comprar"],
   playing: ["jogando", "playing", "em andamento", "comecei"],
   completed: ["zerado", "zerei", "completed", "finalizado", "terminado", "concluido", "done", "beat"],
+  dropped: ["abandonado", "abandonei", "dropped", "desisti", "largado", "larguei"],
 };
 
 function normalize(text: string) {

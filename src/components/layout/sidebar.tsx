@@ -5,6 +5,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CircleCheck,
+  CirclePause,
+  Gift,
   CirclePlay,
   Cloud,
   CloudOff,
@@ -124,6 +126,8 @@ export function Sidebar() {
         <Item to="/status/playing" icon={<CirclePlay />} label="Jogando" count={count("playing")} />
         <Item to="/status/backlog" icon={<Hourglass />} label="Pra zerar" count={count("backlog")} />
         <Item to="/status/completed" icon={<CircleCheck />} label="Zerados" count={count("completed")} />
+        <Item to="/status/wishlist" icon={<Gift />} label="Lista de desejos" count={count("wishlist")} />
+        <Item to="/status/dropped" icon={<CirclePause />} label="Abandonados" count={count("dropped")} />
 
         <SectionLabel>Acompanhamento</SectionLabel>
         <Item to="/goals" icon={<Target />} label="Metas" />

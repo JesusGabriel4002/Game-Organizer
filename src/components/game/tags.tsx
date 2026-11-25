@@ -2,7 +2,7 @@ import { Check, Plus } from "lucide-react";
 import { useState } from "react";
 import { STATUS_META, TAG_COLORS, randomTagColor } from "@/lib/constants";
 import { useCategories, useCreateCategory } from "@/lib/queries";
-import { STATUSES, type Category, type GameStatus, type TagColor } from "@/lib/types";
+import { CAN_TARGET, STATUSES, type Category, type GameStatus, type TagColor } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { targetYearOptions } from "@/lib/completion";
 import {
@@ -57,7 +57,7 @@ export function StatusSelect({
   onTargetYear?: (year: number | null) => void;
   className?: string;
 }) {
-  const showTarget = onTargetYear && value !== "completed";
+  const showTarget = onTargetYear && CAN_TARGET.includes(value);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
