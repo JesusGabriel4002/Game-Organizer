@@ -36,3 +36,7 @@ Thumbs.db
 
 supabase/.temp/
 
+# Android signing keys
+*.jks
+*.keystore
+keystore.properties

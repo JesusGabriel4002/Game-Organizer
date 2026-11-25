@@ -14,9 +14,9 @@ export function PageHeader({
   return (
     <div className="mb-6">
       <div className="mb-2 text-4xl leading-none">{icon}</div>
-      <div className="flex items-end justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-        {actions && <div className="flex items-center gap-1">{actions}</div>}
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h1>
+        {actions && <div className="flex flex-wrap items-center justify-end gap-1">{actions}</div>}
       </div>
       {description && <p className="mt-1 text-muted-foreground">{description}</p>}
     </div>
@@ -25,7 +25,7 @@ export function PageHeader({
 
 export function PageContainer({ children, wide, className }: { children: React.ReactNode; wide?: boolean; className?: string }) {
   return (
-    <div className={cn("mx-auto px-12 pb-24 pt-14", wide ? "max-w-[1400px]" : "max-w-4xl", className)}>{children}</div>
+    <div className={cn("mx-auto px-4 pb-24 pt-6 md:px-12 md:pt-14", wide ? "max-w-[1400px]" : "max-w-4xl", className)}>{children}</div>
   );
 }
 

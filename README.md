@@ -107,6 +107,32 @@ gh release create v0.2.0 "src-tauri/target/release/bundle/nsis/Game Organizer_0.
 
 Builds manuais nunca são assinados: a SignPath só assina o que foi compilado pelo GitHub Actions.
 
+## App Android
+
+O mesmo código gera um APK para Android (arm64, que cobre praticamente todos os celulares atuais). O workflow [`android.yml`](.github/workflows/android.yml) compila o APK a cada push e o anexa à release junto com o instalador do Windows.
+
+**Instalar:** baixe o `Game.Organizer_X.Y.Z_android-arm64.apk` da [página de Releases](https://github.com/JesusGabriel4002/Game-Organizer/releases/latest) no celular e abra. O Android pede para permitir instalar apps "de fontes desconhecidas" para o navegador ou o gerenciador de arquivos. Entre com a mesma conta do PC para ter a mesma biblioteca.
+
+No celular não há atualização automática: para atualizar, baixe e instale o APK da versão nova.
+
+**Assinatura (recomendado):** sem uma chave própria, a CI gera um APK de *debug* com uma chave descartável, e cada versão nova exige desinstalar a anterior, o que apaga os dados locais. Para que as versões novas instalem por cima, crie uma chave uma única vez (precisa do Java/JDK instalado) e cadastre-a no GitHub:
+
+1. Gere a chave, escolhendo uma senha:
+
+   ```powershell
+   keytool -genkey -v -keystore game-organizer.jks -keyalg RSA -keysize 2048 -validity 10000 -alias game-organizer
+   ```
+
+2. Copie o arquivo em base64:
+
+   ```powershell
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("game-organizer.jks")) | Set-Clipboard
+   ```
+
+3. Em **Settings → Secrets and variables → Actions → Secrets**, crie `ANDROID_KEYSTORE_BASE64` (o texto copiado), `ANDROID_KEYSTORE_PASSWORD` (a senha) e `ANDROID_KEY_ALIAS` (`game-organizer`).
+
+Guarde o `.jks` e a senha fora do repositório, num lugar seguro. Sem eles não dá para publicar atualizações que instalem por cima.
+
 ## Busca de jogos (IGDB)
 
 A busca funciona sem configurar nada. O app consulta um servidor intermediário próprio, um Cloudflare Worker em [`worker/`](worker/), que guarda a chave da Twitch e repassa as buscas ao IGDB. O secret nunca fica no repositório nem dentro do `.exe`.

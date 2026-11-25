@@ -131,14 +131,14 @@ export function LibraryPage() {
           </Button>
         ))}
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1 sm:ml-auto">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar..."
-              className="h-7 w-44 rounded-md bg-transparent pl-7 pr-2 text-sm outline-none placeholder:text-muted-foreground hover:bg-accent focus:bg-accent"
+              className="h-7 w-36 rounded-md sm:w-44 bg-transparent pl-7 pr-2 text-sm outline-none placeholder:text-muted-foreground hover:bg-accent focus:bg-accent"
             />
           </div>
 

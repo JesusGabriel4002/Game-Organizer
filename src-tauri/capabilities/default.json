@@ -15,7 +15,6 @@
     "dialog:allow-message",
     "opener:default",
     "process:allow-restart",
-    "updater:default",
     "notification:default"
   ]
 }

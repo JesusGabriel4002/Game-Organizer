@@ -19,6 +19,7 @@ import {
   Sun,
   Tags,
   Target,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -66,7 +67,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="mb-1 mt-4 px-2 text-xs font-medium text-muted-foreground">{children}</div>;
 }
 
-export function Sidebar() {
+/** `onClose` turns it into the phone drawer: always expanded, with a close button instead of "collapse". */
+export function Sidebar({ onClose }: { onClose?: () => void } = {}) {
   const { data: library = [] } = useLibrary();
   const { data: categories = [] } = useCategories();
   const { theme, setTheme, sidebarCollapsed, toggleSidebar } = useUi();
@@ -85,7 +87,7 @@ export function Sidebar() {
   const visibleCategories = showAllCategories ? rankedCategories : rankedCategories.slice(0, SIDEBAR_CATEGORY_LIMIT);
   const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  if (sidebarCollapsed) {
+  if (sidebarCollapsed && !onClose) {
     return (
       <aside className="flex w-11 shrink-0 flex-col items-center gap-1 border-r border-border bg-sidebar py-3">
         <button onClick={toggleSidebar} className="rounded-md p-1.5 text-muted-foreground hover:bg-accent" title="Expandir">
@@ -99,12 +101,16 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-sidebar">
+    <aside className={cn("flex shrink-0 flex-col border-r border-border bg-sidebar", onClose ? "h-full w-72" : "w-60")}>
       <div className="flex h-12 items-center gap-2 px-3">
         <img src="/icon.svg" alt="" className="size-5 rounded" />
         <span className="flex-1 truncate text-sm font-semibold">Game Organizer</span>
-        <button onClick={toggleSidebar} className="rounded-md p-1 text-muted-foreground hover:bg-accent" title="Recolher">
-          <ChevronsLeft className="size-4" />
+        <button
+          onClick={onClose ?? toggleSidebar}
+          className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+          title={onClose ? "Fechar menu" : "Recolher"}
+        >
+          {onClose ? <X className="size-4" /> : <ChevronsLeft className="size-4" />}
         </button>
       </div>
 

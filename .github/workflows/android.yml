@@ -1,0 +1,124 @@
+name: Android
+
+# Builds the Android APK (arm64, which covers practically every current phone).
+# - On every push/PR: checks that the app compiles for Android and keeps the APK as a workflow artifact.
+# - Called by release.yml with a tag: also attaches the APK to that GitHub release.
+#
+# Signing: with the secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS
+# (and optionally ANDROID_KEY_PASSWORD) the APK is a signed release build, so new versions install over the old
+# one. Without them it is a debug build signed with a throwaway key: it installs, but each new version has to
+# be uninstalled first. See the README ("App Android").
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Release to attach the APK to
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ inputs.release_tag || github.ref }}
+  cancel-in-progress: ${{ !inputs.release_tag }}
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      SIGNED: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: android
+
+      - run: npm ci
+
+      - name: Inject public Supabase config
+        run: |
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_ANON_KEY=%s\n' "$VITE_SUPABASE_URL" "$VITE_SUPABASE_ANON_KEY" > .env
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+
+      # The runner image already ships the Android SDK and NDK.
+      - name: Generate the Android project
+        run: npx tauri android init --ci
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+
+      - name: Build APK
+        run: |
+          if [ "$SIGNED" = "true" ]; then
+            npx tauri android build --apk --target aarch64 --ci
+          else
+            echo "::warning::Sem keystore nos secrets: gerando APK de debug (cada versão nova exige desinstalar a anterior)."
+            npx tauri android build --apk --target aarch64 --debug --ci
+          fi
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+
+      - name: Sign and name the APK
+        id: apk
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          mkdir -p out
+          if [ "$SIGNED" = "true" ]; then
+            unsigned=$(find src-tauri/gen/android/app/build/outputs/apk -name '*-release-unsigned.apk' | head -n 1)
+            [ -n "$unsigned" ] || { echo "APK de release não encontrado"; exit 1; }
+            tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            "$tools/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+            "$tools/apksigner" sign \
+              --ks "$RUNNER_TEMP/release.jks" \
+              --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+              --ks-key-alias "$ANDROID_KEY_ALIAS" \
+              --key-pass env:ANDROID_KEY_PASSWORD \
+              --out "out/Game.Organizer_${version}_android-arm64.apk" \
+              "$RUNNER_TEMP/aligned.apk"
+            rm -f "$RUNNER_TEMP/release.jks"
+          else
+            debug=$(find src-tauri/gen/android/app/build/outputs/apk -name '*-debug.apk' | head -n 1)
+            [ -n "$debug" ] || { echo "APK de debug não encontrado"; exit 1; }
+            cp "$debug" "out/Game.Organizer_${version}_android-arm64-debug.apk"
+          fi
+          ls -la out
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: out/*.apk
+
+      - name: Attach to the release
+        if: inputs.release_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          files: out/*.apk

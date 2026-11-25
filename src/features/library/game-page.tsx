@@ -42,7 +42,7 @@ import { PlaySessions } from "./play-sessions";
 function Property({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-h-8 items-center gap-2">
-      <div className="flex w-36 shrink-0 items-center gap-2 text-sm text-muted-foreground [&_svg]:size-4">
+      <div className="flex w-32 shrink-0 items-center gap-2 text-sm text-muted-foreground sm:w-36 [&_svg]:size-4">
         {icon}
         {label}
       </div>
@@ -142,16 +142,16 @@ export function GamePage() {
       </Dialog>
 
       <PageContainer className="pt-0">
-        <div className="-mt-24 flex items-end gap-6">
+        <div className="-mt-24 flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
           <div className="relative shrink-0">
-            <Cover url={entry.coverUrl} name={entry.name} className="h-56 w-40 rounded-lg border border-border shadow-xl" />
+            <Cover url={entry.coverUrl} name={entry.name} className="h-44 w-32 rounded-lg border border-border shadow-xl sm:h-56 sm:w-40" />
             <ScoreBadge entry={entry} />
           </div>
           <div className="min-w-0 pb-2">
             <TextField
               value={entry.name}
               onCommit={(name) => name && updateEntry({ entry, patch: { name } })}
-              className="h-auto py-1 text-3xl font-bold tracking-tight"
+              className="h-auto py-1 text-2xl font-bold tracking-tight sm:text-3xl"
             />
             {entry.genres.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1 px-1">

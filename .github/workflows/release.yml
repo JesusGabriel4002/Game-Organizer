@@ -171,3 +171,11 @@ jobs:
 
             ### Code signing policy
             Veja a [política de assinatura de código](https://github.com/${{ github.repository }}#code-signing-policy).
+
+  android:
+    needs: [check, build-windows]
+    if: needs.check.outputs.release == 'true'
+    uses: ./.github/workflows/android.yml
+    with:
+      release_tag: ${{ needs.check.outputs.tag }}
+    secrets: inherit

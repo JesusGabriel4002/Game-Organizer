@@ -86,13 +86,25 @@ fn unprotect(sealed: &[u8]) -> Result<Vec<u8>, String> {
     }
 }
 
-#[cfg(not(windows))]
+/// Android and iOS keep each app's data folder private to that app (other apps can't read it), which is where
+/// the session file lives, so it is stored as is there.
+#[cfg(all(not(windows), mobile))]
+fn protect(plain: &[u8]) -> Result<Vec<u8>, String> {
+    Ok(plain.to_vec())
+}
+
+#[cfg(all(not(windows), mobile))]
+fn unprotect(sealed: &[u8]) -> Result<Vec<u8>, String> {
+    Ok(sealed.to_vec())
+}
+
+#[cfg(all(not(windows), desktop))]
 fn protect(plain: &[u8]) -> Result<Vec<u8>, String> {
     let _ = plain;
     Err("A sessão protegida só está disponível no Windows.".into())
 }
 
-#[cfg(not(windows))]
+#[cfg(all(not(windows), desktop))]
 fn unprotect(sealed: &[u8]) -> Result<Vec<u8>, String> {
     let _ = sealed;
     Err("A sessão protegida só está disponível no Windows.".into())

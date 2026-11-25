@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Android or iOS build (the webview's user agent), where desktop-only features are skipped. */
+export function isMobile() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 export function nowIso() {
   return new Date().toISOString();
 }
