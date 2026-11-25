@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service);
 
     // Order respects FKs among cloud tables (no hard FKs between app tables, but delete children first).
-    for (const table of ["user_game_categories", "goals", "user_games", "categories", "games"]) {
+    for (const table of ["play_sessions", "user_game_categories", "goals", "user_games", "categories", "games"]) {
       const { error } = await admin.from(table).delete().eq("user_id", userId);
       if (error) {
         return new Response(JSON.stringify({ error: "delete_failed" }), { status: 500, headers: cors });

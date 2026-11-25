@@ -24,7 +24,7 @@ export function useCloudSync() {
       try {
         const { pulled } = await syncNow();
         if (!cancelled && pulled > 0) {
-          await Promise.all([keys.library, keys.categories, keys.goals].map((k) => qc.invalidateQueries({ queryKey: k })));
+          await Promise.all([keys.library, keys.categories, keys.goals, keys.sessions].map((k) => qc.invalidateQueries({ queryKey: k })));
         }
       } catch {
         const wait = nextBackoffMs();

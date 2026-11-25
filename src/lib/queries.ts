@@ -2,7 +2,7 @@ import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/re
 import { useEffect, useRef } from "react";
 import { igdb } from "./api";
 import * as db from "./db";
-import type { AddOptions, EntryPatch, GameStatus, GoalInput, IgdbGame, LibraryEntry, TagColor } from "./types";
+import type { AddOptions, EntryPatch, GameStatus, GoalInput, IgdbGame, LibraryEntry, PlaySession, TagColor } from "./types";
 import { toast } from "./toast";
 import { errorMessage } from "./utils";
 
@@ -17,6 +17,7 @@ export const keys = {
   library: ["library"] as const,
   categories: ["categories"] as const,
   goals: ["goals"] as const,
+  sessions: ["sessions"] as const,
 };
 
 export function useLibrary() {
@@ -183,5 +184,31 @@ export function useDeleteGoal() {
   return useMutation({
     mutationFn: (id: string) => db.deleteGoal(id),
     onSuccess: () => invalidate(keys.goals),
+  });
+}
+
+export function useSessions() {
+  return useQuery({ queryKey: keys.sessions, queryFn: db.listSessions });
+}
+
+export function useAddSession() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ entry, playedOn, minutes, note }: { entry: LibraryEntry; playedOn: string; minutes: number; note: string }) => {
+      await db.addSession(entry.id, { playedOn, minutes, note });
+      // Logging time on a game that wasn't started means it's being played now.
+      if (entry.status === "backlog" || entry.status === "wishlist") {
+        await db.updateEntry(entry.id, { status: "playing", startedAt: entry.startedAt ?? playedOn }, entry);
+      }
+    },
+    onSuccess: () => invalidate(keys.sessions, keys.library),
+  });
+}
+
+export function useDeleteSession() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (session: PlaySession) => db.deleteSession(session),
+    onSuccess: () => invalidate(keys.sessions, keys.library),
   });
 }

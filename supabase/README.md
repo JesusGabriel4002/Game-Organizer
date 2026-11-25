@@ -10,6 +10,7 @@
 2. Vá em **SQL** → **New query**
 3. Cole o conteúdo de [migrations/001_sync.sql](migrations/001_sync.sql)
 4. Clique em **Run**
+5. Repita com [migrations/002_statuses_sessions.sql](migrations/002_statuses_sessions.sql) (status "Lista de desejos" e "Abandonado" e sessões de jogo). Sem ela, jogos com os status novos não sobem para a nuvem e as sessões ficam só no computador.
 
 ## 2. Deploy da função "excluir conta"
 No terminal (com [Supabase CLI](https://supabase.com/docs/guides/cli) instalado e logado):

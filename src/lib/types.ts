@@ -67,6 +67,16 @@ export interface CompletionInput {
   completedAt: string | null;
 }
 
+export interface PlaySession {
+  id: string;
+  userGameId: string;
+  /** YYYY-MM-DD */
+  playedOn: string;
+  minutes: number;
+  note: string;
+  createdAt: string;
+}
+
 export type TagColor = "gray" | "brown" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "red";
 
 export interface Category {

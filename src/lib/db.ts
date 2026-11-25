@@ -2,7 +2,7 @@ import Database from "@tauri-apps/plugin-sql";
 import { matchCategories } from "./auto-categories";
 import { newId, nowIso, parseJsonArray } from "./utils";
 import { NOT_STARTED } from "./types";
-import type { AddOptions, Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbDetails, IgdbGame, LibraryEntry, TagColor } from "./types";
+import type { AddOptions, Category, CompletionInput, EntryPatch, GameStatus, Goal, GoalInput, IgdbDetails, IgdbGame, LibraryEntry, PlaySession, TagColor } from "./types";
 
 const DB_URL = "sqlite:games.db";
 
@@ -431,6 +431,65 @@ export async function deleteGoal(id: string) {
   await db.execute("UPDATE goals SET deleted_at = $1, updated_at = $1 WHERE id = $2", [now, id]);
 }
 
+// ---------------------------------------------------------------- play sessions
+
+interface SessionRow {
+  id: string;
+  user_game_id: string;
+  played_on: string;
+  minutes: number;
+  note: string;
+  created_at: string;
+}
+
+/** Every logged session of games still in the library, newest first. */
+export async function listSessions(): Promise<PlaySession[]> {
+  const db = await getDb();
+  const rows = await db.select<SessionRow[]>(
+    `SELECT s.id, s.user_game_id, s.played_on, s.minutes, s.note, s.created_at
+       FROM play_sessions s JOIN user_games ug ON ug.id = s.user_game_id AND ug.deleted_at IS NULL
+      WHERE s.deleted_at IS NULL
+      ORDER BY s.played_on DESC, s.created_at DESC`,
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    userGameId: r.user_game_id,
+    playedOn: r.played_on,
+    minutes: r.minutes,
+    note: r.note ?? "",
+    createdAt: r.created_at,
+  }));
+}
+
+/** Adds the session's time to the game's "horas jogadas" so the total stays the single number shown everywhere. */
+async function addHours(entryId: string, minutes: number, now: string) {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE user_games SET hours = MAX(0, ROUND(COALESCE(hours, 0) + $1, 2)), updated_at = $2 WHERE id = $3`,
+    [minutes / 60, now, entryId],
+  );
+}
+
+export async function addSession(entryId: string, input: { playedOn: string; minutes: number; note: string }) {
+  const db = await getDb();
+  const now = nowIso();
+  const id = newId();
+  await db.execute(
+    `INSERT INTO play_sessions (id, user_game_id, played_on, minutes, note, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $6)`,
+    [id, entryId, input.playedOn, Math.round(input.minutes), input.note.trim(), now],
+  );
+  await addHours(entryId, input.minutes, now);
+  return id;
+}
+
+export async function deleteSession(session: PlaySession) {
+  const db = await getDb();
+  const now = nowIso();
+  await db.execute("UPDATE play_sessions SET deleted_at = $1, updated_at = $1 WHERE id = $2", [now, session.id]);
+  await addHours(session.userGameId, -session.minutes, now);
+}
+
 // ---------------------------------------------------------------- settings
 
 export async function getSetting(key: string): Promise<string | null> {
@@ -450,7 +509,7 @@ export async function setSetting(key: string, value: string) {
 
 // ---------------------------------------------------------------- backup
 
-export const BACKUP_TABLES = ["games", "categories", "user_games", "user_game_categories", "goals"] as const;
+export const BACKUP_TABLES = ["games", "categories", "user_games", "user_game_categories", "goals", "play_sessions"] as const;
 type BackupTable = (typeof BACKUP_TABLES)[number];
 
 export interface Backup {

@@ -185,7 +185,7 @@ Na prática:
 ### Configurar o Supabase (conta e sync)
 
 1. Crie um projeto no Supabase e ative login por e-mail/senha.
-2. Rode o SQL em [`supabase/migrations/001_sync.sql`](supabase/migrations/001_sync.sql) no **SQL Editor**.
+2. Rode o SQL de [`supabase/migrations/001_sync.sql`](supabase/migrations/001_sync.sql) e depois o de [`002_statuses_sessions.sql`](supabase/migrations/002_statuses_sessions.sql) no **SQL Editor**.
 3. (Opcional) Faça o deploy de [`supabase/functions/delete-account`](supabase/functions/delete-account) para o botão "Excluir conta".
 4. Defina `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no `.env` local e nas Variables do GitHub Actions. Nunca coloque a `service_role` no app.
 5. Detalhes em [`supabase/README.md`](supabase/README.md).

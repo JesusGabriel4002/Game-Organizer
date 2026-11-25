@@ -52,7 +52,7 @@ export function AccountSection() {
       .finally(() => setReady(true));
   }, []);
 
-  const invalidate = () => Promise.all([keys.library, keys.categories, keys.goals].map((k) => qc.invalidateQueries({ queryKey: k })));
+  const invalidate = () => Promise.all([keys.library, keys.categories, keys.goals, keys.sessions].map((k) => qc.invalidateQueries({ queryKey: k })));
 
   if (!isSupabaseConfigured()) {
     return (

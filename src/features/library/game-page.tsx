@@ -36,6 +36,7 @@ import { ScoreBadge } from "@/components/game/score-badge";
 import { DateField, NumberField, RatingField, TextField } from "@/components/game/fields";
 import { CategoryPicker, StatusSelect, Tag } from "@/components/game/tags";
 import { NotesEditor } from "./notes-editor";
+import { PlaySessions } from "./play-sessions";
 
 function Property({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
@@ -247,6 +248,10 @@ export function GamePage() {
         {entry.summary && (
           <p className="mt-6 rounded-md bg-accent px-4 py-3 text-sm leading-relaxed text-muted-foreground">{entry.summary}</p>
         )}
+
+        <div className="mt-6 border-t border-border pt-6">
+          <PlaySessions entry={entry} />
+        </div>
 
         <div className="mt-6 border-t border-border pt-6">
           <NotesEditor key={entry.id} value={entry.notes} onSave={(notes) => updateEntry({ entry, patch: { notes } })} />

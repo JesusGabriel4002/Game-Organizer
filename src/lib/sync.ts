@@ -19,11 +19,29 @@ let state: SyncState = { status: "disabled", lastSyncAt: null, pending: 0, error
 let running: Promise<void> | null = null;
 let backoffMs = 0;
 
-const SYNC_TABLES = ["games", "categories", "user_games", "user_game_categories", "goals"] as const;
+const SYNC_TABLES = ["games", "categories", "user_games", "user_game_categories", "goals", "play_sessions"] as const;
 type SyncTable = (typeof SYNC_TABLES)[number];
 
-const PULL_ORDER: SyncTable[] = ["games", "categories", "user_games", "user_game_categories", "goals"];
+const PULL_ORDER: SyncTable[] = ["games", "categories", "user_games", "user_game_categories", "goals", "play_sessions"];
 const PUSH_ORDER: SyncTable[] = ["games", "categories", "user_games", "user_game_categories", "goals"];
+
+/**
+ * Tables added after the first cloud schema (supabase/migrations/002_*). They are pushed in a separate call, so a
+ * Supabase project that hasn't run that migration yet keeps syncing everything else.
+ */
+const LATER_TABLES: SyncTable[] = ["play_sessions"];
+let remoteMissing = new Set<SyncTable>();
+
+function isMissingTableError(message: string, table: string) {
+  return message.includes(`invalid table: ${table}`) || (message.includes(table) && /does not exist|schema cache|PGRST205/i.test(message));
+}
+
+function friendlySyncError(message: string) {
+  if (message.includes("user_games_status_check")) {
+    return "O banco na nuvem ainda não aceita os status novos. Rode supabase/migrations/002_statuses_sessions.sql no Supabase.";
+  }
+  return message;
+}
 
 const TABLE_COLUMNS: Record<SyncTable, string[]> = {
   games: ["id", "igdb_id", "name", "cover_url", "cover_local", "release_year", "genres", "platforms", "summary", "created_at", "updated_at", "deleted_at"],
@@ -37,6 +55,7 @@ const TABLE_COLUMNS: Record<SyncTable, string[]> = {
     "id", "title", "type", "user_game_id", "category_id", "target_count", "period_start",
     "deadline", "created_at", "updated_at", "deleted_at",
   ],
+  play_sessions: ["id", "user_game_id", "played_on", "minutes", "note", "created_at", "updated_at", "deleted_at"],
 };
 
 function emit(partial: Partial<SyncState>) {
@@ -96,6 +115,7 @@ async function pushOutbox() {
   const byTable = new Map<SyncTable, string[]>();
   for (const row of batch) {
     if (!SYNC_TABLES.includes(row.tbl as SyncTable)) continue;
+    if (LATER_TABLES.includes(row.tbl as SyncTable) && remoteMissing.has(row.tbl as SyncTable)) continue;
     const list = byTable.get(row.tbl as SyncTable) ?? [];
     list.push(row.pk);
     byTable.set(row.tbl as SyncTable, list);
@@ -109,11 +129,30 @@ async function pushOutbox() {
   }
 
   const supabase = getSupabase();
-  const { error } = await supabase.rpc("push_changes", { payload } as never);
-  if (error) throw new Error(error.message);
+  const pushed = new Set<string>();
+  if (Object.keys(payload).length) {
+    const { error } = await supabase.rpc("push_changes", { payload } as never);
+    if (error) throw new Error(friendlySyncError(error.message));
+    for (const table of Object.keys(payload)) pushed.add(table);
+  }
+
+  for (const table of LATER_TABLES) {
+    const pks = byTable.get(table);
+    if (!pks?.length || remoteMissing.has(table)) continue;
+    const { error } = await supabase.rpc("push_changes", { payload: { [table]: await loadRows(table, pks) } } as never);
+    if (error) {
+      if (!isMissingTableError(error.message, table)) throw new Error(friendlySyncError(error.message));
+      remoteMissing.add(table);
+      continue;
+    }
+    pushed.add(table);
+  }
 
   for (const row of batch) {
-    await db.execute("DELETE FROM sync_outbox WHERE tbl = $1 AND pk = $2", [row.tbl, row.pk]);
+    // Rows for unknown tables are dropped; rows the server can't take yet stay queued.
+    if (pushed.has(row.tbl) || !SYNC_TABLES.includes(row.tbl as SyncTable)) {
+      await db.execute("DELETE FROM sync_outbox WHERE tbl = $1 AND pk = $2", [row.tbl, row.pk]);
+    }
   }
 }
 
@@ -191,6 +230,7 @@ async function pullChanges() {
   await setApplying(true);
   try {
     for (const table of PULL_ORDER) {
+      if (remoteMissing.has(table)) continue;
       let cursor = (await getSyncMeta(cursorKey(table))) ?? "1970-01-01T00:00:00.000Z";
       for (;;) {
         const { data, error } = await supabase
@@ -199,6 +239,10 @@ async function pullChanges() {
           .gt("server_updated_at", cursor)
           .order("server_updated_at", { ascending: true })
           .limit(500);
+        if (error && LATER_TABLES.includes(table) && isMissingTableError(`${error.code ?? ""} ${error.message}`, table)) {
+          remoteMissing.add(table);
+          break;
+        }
         if (error) throw new Error(error.message);
         const rows = data ?? [];
         if (!rows.length) break;
@@ -232,6 +276,8 @@ export async function syncNow(opts?: { force?: boolean }) {
     emit({ status: "syncing", error: null });
     try {
       const supabase = getSupabase();
+      // Re-check tables the server lacked, in case the migration was run since the last attempt.
+      remoteMissing = new Set();
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
         emit({ status: "idle", pending: 0 });

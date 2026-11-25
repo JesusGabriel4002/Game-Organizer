@@ -59,4 +59,10 @@ export async function enqueueAllLocalRows() {
      ON CONFLICT (tbl, pk) DO UPDATE SET queued_at = excluded.queued_at`,
     [now],
   );
+  await db.execute(
+    `INSERT INTO sync_outbox (tbl, pk, queued_at)
+     SELECT 'play_sessions', id, $1 FROM play_sessions
+     ON CONFLICT (tbl, pk) DO UPDATE SET queued_at = excluded.queued_at`,
+    [now],
+  );
 }
