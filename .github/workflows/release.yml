@@ -1,7 +1,11 @@
 name: Release
 
+# Publishes a release when a push to main carries a version (tauri.conf.json) that has no tag yet,
+# or when a v* tag is pushed by hand. Bump the version with `npm run bump -- X.Y.Z` to ship.
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
 
@@ -9,8 +13,45 @@ permissions:
   contents: write
   actions: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.decide.outputs.release }}
+      tag: ${{ steps.decide.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether to release
+        id: decide
+        shell: bash
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          tag="v$version"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if [ "$GITHUB_REF_NAME" != "$tag" ]; then
+              echo "::error::A tag $GITHUB_REF_NAME não bate com a versão $version do tauri.conf.json. Rode npm run bump."
+              exit 1
+            fi
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          elif git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "A versão $version já foi publicada ($tag); nada a fazer. Rode npm run bump para soltar outra."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Versão nova $version: publicando $tag."
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build-windows:
+    needs: check
+    if: needs.check.outputs.release == 'true'
     runs-on: windows-latest
     env:
       # Signing turns on automatically once the SignPath secret and variables exist in the repo settings.
@@ -52,9 +93,6 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
-          if ("v$version" -ne "${{ github.ref_name }}") {
-            throw "A tag ${{ github.ref_name }} não bate com a versão $version do tauri.conf.json. Rode npm run bump."
-          }
           New-Item -ItemType Directory -Force out | Out-Null
           Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe |
             ForEach-Object { Copy-Item $_.FullName (Join-Path out ($_.Name -replace ' ', '.')) }
@@ -101,7 +139,7 @@ jobs:
           npx tauri signer sign $exePath --app-version $version
           if ($LASTEXITCODE -ne 0) { throw "Falha ao assinar o atualizador" }
           $sig = (Get-Content "$exePath.sig" -Raw).Trim()
-          $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$($found.Name)"
+          $url = "https://github.com/${{ github.repository }}/releases/download/${{ needs.check.outputs.tag }}/$($found.Name)"
           $manifest = [ordered]@{
             version = $version
             notes = "Game Organizer $version"
@@ -117,7 +155,9 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          name: Game Organizer ${{ github.ref_name }}
+          tag_name: ${{ needs.check.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Game Organizer ${{ needs.check.outputs.tag }}
           files: |
             ${{ steps.files.outputs.dir }}/*.exe
             ${{ steps.files.outputs.dir }}/latest.json

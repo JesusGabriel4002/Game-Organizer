@@ -74,25 +74,29 @@ A pasta `target/` está no `.gitignore`, então os compilados não vão para o r
 
 ## Publicando uma nova versão
 
-As releases são automáticas. O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) roda no GitHub Actions sempre que uma tag `v*` é enviada. Ele compila o app num runner Windows hospedado pelo GitHub e cria a release com o instalador anexado. Se a assinatura pela SignPath estiver configurada, o instalador é assinado antes de ser publicado (veja [Code signing policy](#code-signing-policy)).
+As releases são automáticas. Dois workflows rodam no GitHub Actions, num runner Windows:
+
+- [`ci.yml`](.github/workflows/ci.yml) compila o app (frontend e Rust) a cada push e pull request, sem publicar nada. Serve para pegar erro de build antes de uma release.
+- [`release.yml`](.github/workflows/release.yml) roda a cada push na `main`. Se a versão do `tauri.conf.json` ainda não tem tag, ele compila, cria a tag `vX.Y.Z` e publica a release com o instalador. Se a versão já foi publicada, não faz nada. Com a assinatura da SignPath configurada, o instalador é assinado antes de ser publicado (veja [Code signing policy](#code-signing-policy)).
+
+Para soltar uma versão nova:
 
 1. Atualize a versão nos três arquivos de uma vez (`package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`):
 
    ```bash
-   npm run bump -- 0.2.0
+   npm run bump -- 0.4.0
    ```
 
-2. Faça o commit, crie a tag e envie:
+2. Faça o commit e envie para a `main`:
 
    ```bash
-   git commit -am "v0.2.0"
-   git tag v0.2.0
-   git push origin main --tags
+   git commit -am "v0.4.0"
+   git push origin main
    ```
 
-3. Acompanhe a compilação na aba **Actions** do GitHub (leva uns 10 minutos). Com a assinatura ativa, aprove o pedido de assinatura no painel da SignPath quando ele aparecer; o workflow espera até 1 hora pela aprovação. Ao terminar, a release `v0.2.0` aparece em **Releases** com o instalador.
+3. Acompanhe a compilação na aba **Actions** do GitHub (leva uns 10 minutos). Com a assinatura ativa, aprove o pedido de assinatura no painel da SignPath quando ele aparecer; o workflow espera até 1 hora pela aprovação. Ao terminar, a release `v0.4.0` aparece em **Releases** com o instalador, e quem já tem o app recebe a atualização ao abrir.
 
-A versão da tag precisa ser igual à dos arquivos; o workflow falha logo no início se não for. Para corrigir uma release com problema, apague a release e a tag no GitHub (`gh release delete v0.2.0 --cleanup-tag`) e repita o passo 2.
+Pushes na `main` sem mudar a versão só passam pela compilação de teste. Ainda dá para publicar enviando uma tag `v*` à mão, desde que ela bata com a versão dos arquivos. Para refazer uma release com problema, apague a release e a tag no GitHub (`gh release delete v0.4.0 --cleanup-tag`) e rode o workflow de novo (ou faça um novo push na `main`).
 
 ### Publicando manualmente (sem Actions)
 
