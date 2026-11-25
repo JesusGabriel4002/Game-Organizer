@@ -1,11 +1,11 @@
-import { Check, Filter, Kanban, LayoutGrid, Plus, Search, Table2, X } from "lucide-react";
+import { Check, Filter, Kanban, LayoutGrid, Plus, RefreshCw, Search, Table2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { completionSortKey } from "@/lib/completion";
 import { STATUS_META } from "@/lib/constants";
 import { scoreOf } from "@/lib/igdb-info";
 import { defaultLibrarySort } from "@/lib/library-sort";
-import { useCategories, useLibrary } from "@/lib/queries";
+import { useCategories, useLibrary, useRefreshLibrary } from "@/lib/queries";
 import { usePalette, useUi, type ViewMode } from "@/lib/store";
 import type { GameStatus, LibraryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -63,6 +63,7 @@ export function LibraryPage() {
   const { data: categories = [] } = useCategories();
   const { viewMode, setViewMode } = useUi();
   const openPalette = usePalette((s) => s.setOpen);
+  const refresh = useRefreshLibrary();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
@@ -99,9 +100,20 @@ export function LibraryPage() {
         title={title}
         description={`${entries.length} ${entries.length === 1 ? "jogo" : "jogos"}`}
         actions={
-          <Button variant="default" onClick={() => openPalette(true)}>
-            <Plus /> Adicionar jogo
-          </Button>
+          <>
+            <Button
+              variant="subtle"
+              onClick={() => void refresh.run()}
+              disabled={!!refresh.progress || library.length === 0}
+              title="Busca de novo no IGDB a nota da crítica, o tempo para zerar e as categorias automáticas de todos os jogos"
+            >
+              <RefreshCw className={cn(refresh.progress && "animate-spin")} />
+              {refresh.progress ? `Atualizando ${refresh.progress.done}/${refresh.progress.total}` : "Atualizar biblioteca"}
+            </Button>
+            <Button variant="default" onClick={() => openPalette(true)}>
+              <Plus /> Adicionar jogo
+            </Button>
+          </>
         }
       />
 

@@ -249,6 +249,17 @@ export async function listGamesToSync(): Promise<{ igdbId: number; firstSync: bo
   return rows.map((r) => ({ igdbId: r.igdb_id, firstSync: r.synced === null }));
 }
 
+/** Every IGDB game in the library, for a full refresh. */
+export async function listLibraryIgdbIds(): Promise<number[]> {
+  const db = await getDb();
+  const rows = await db.select<{ igdb_id: number }[]>(
+    `SELECT DISTINCT g.igdb_id FROM games g
+       JOIN user_games ug ON ug.game_id = g.id AND ug.deleted_at IS NULL
+      WHERE g.igdb_id IS NOT NULL`,
+  );
+  return rows.map((r) => r.igdb_id);
+}
+
 /** Derived data, so updated_at is left alone and backups don't treat it as a user edit. */
 export async function saveGameDetails(details: IgdbDetails[]) {
   const db = await getDb();

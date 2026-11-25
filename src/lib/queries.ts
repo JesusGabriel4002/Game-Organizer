@@ -1,5 +1,5 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { igdb } from "./api";
 import * as db from "./db";
 import type { AddOptions, EntryPatch, GameStatus, GoalInput, IgdbGame, LibraryEntry, PlaySession, TagColor } from "./types";
@@ -57,6 +57,51 @@ export function useIgdbSync() {
       }
     })();
   }, [library, qc]);
+}
+
+export interface RefreshProgress {
+  done: number;
+  total: number;
+}
+
+/**
+ * Re-fetches critic score, time to beat and keywords for every IGDB game in the library (ignoring the 30-day
+ * cache), then re-applies the automatic categories. Names, covers and the user's own fields are left alone.
+ */
+export function useRefreshLibrary() {
+  const qc = useQueryClient();
+  const [progress, setProgress] = useState<RefreshProgress | null>(null);
+
+  const run = async () => {
+    if (progress) return;
+    const ids = await db.listLibraryIgdbIds();
+    if (!ids.length) {
+      toast.info("Nenhum jogo do IGDB para atualizar.");
+      return;
+    }
+    setProgress({ done: 0, total: ids.length });
+    try {
+      for (let i = 0; i < ids.length; i += SYNC_BATCH) {
+        const batch = ids.slice(i, i + SYNC_BATCH);
+        await db.saveGameDetails(await igdb.details(batch));
+        setProgress({ done: Math.min(ids.length, i + batch.length), total: ids.length });
+      }
+      let added = 0;
+      if ((await db.getSetting(AUTO_CATEGORIES_SETTING)) !== "off") added = await db.applyAutoCategories();
+      await Promise.all([keys.library, keys.categories].map((k) => qc.invalidateQueries({ queryKey: k })));
+      toast.info(
+        `${ids.length} ${ids.length === 1 ? "jogo atualizado" : "jogos atualizados"}` +
+          (added ? `, ${added} ${added === 1 ? "categoria nova" : "categorias novas"}.` : "."),
+      );
+    } catch (err) {
+      toast.error(`Falha ao atualizar: ${errorMessage(err)}`);
+      await qc.invalidateQueries({ queryKey: keys.library });
+    } finally {
+      setProgress(null);
+    }
+  };
+
+  return { run, progress };
 }
 
 export function useEntry(id: string | undefined) {
