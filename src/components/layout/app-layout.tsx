@@ -5,6 +5,7 @@ import { check } from "@tauri-apps/plugin-updater";
 import { Outlet } from "react-router-dom";
 import { useIgdbSync } from "@/lib/queries";
 import { useCoverCache } from "@/lib/covers";
+import { useGoalReminders } from "@/lib/goal-reminders";
 import { useCloudSync } from "@/lib/use-cloud-sync";
 import { useUi, usePalette } from "@/lib/store";
 import { toast } from "@/lib/toast";
@@ -75,6 +76,7 @@ export function AppLayout() {
   usePaletteShortcut();
   useIgdbSync();
   useCoverCache();
+  useGoalReminders();
   useCloudSync();
   useAutoUpdate();
   return (

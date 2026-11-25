@@ -1,5 +1,8 @@
 import { ask } from "@tauri-apps/plugin-dialog";
-import { AlertTriangle, CheckCircle2, Clock, MoreHorizontal, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Bell, BellOff, CheckCircle2, Clock, MoreHorizontal, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { getSetting, setSetting } from "@/lib/db";
+import { GOAL_REMINDERS_SETTING } from "@/lib/goal-reminders";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCategories, useDeleteGoal, useGoals, useLibrary } from "@/lib/queries";
@@ -157,6 +160,30 @@ function YearGoalCard({ goal }: { goal: YearGoal }) {
   );
 }
 
+function RemindersToggle() {
+  const qc = useQueryClient();
+  const setting = useQuery({ queryKey: ["setting", GOAL_REMINDERS_SETTING], queryFn: () => getSetting(GOAL_REMINDERS_SETTING) });
+  const enabled = setting.data !== "off";
+  const toggle = async () => {
+    await setSetting(GOAL_REMINDERS_SETTING, enabled ? "off" : "on");
+    qc.invalidateQueries({ queryKey: ["setting", GOAL_REMINDERS_SETTING] });
+  };
+  return (
+    <Button
+      variant="subtle"
+      onClick={toggle}
+      title={
+        enabled
+          ? "Uma notificação do Windows por dia, ao abrir o app, quando uma meta estiver atrasada ou perto do prazo. Clique para desligar."
+          : "Lembretes desligados. Clique para ligar."
+      }
+    >
+      {enabled ? <Bell /> : <BellOff />}
+      {enabled ? "Lembretes ligados" : "Lembretes desligados"}
+    </Button>
+  );
+}
+
 export function GoalsPage() {
   const { data: goals = [] } = useGoals();
   const { data: library = [] } = useLibrary();
@@ -180,9 +207,12 @@ export function GoalsPage() {
         title="Metas"
         description="Zerar um jogo até uma data, zerar em um ano ou zerar uma quantidade de jogos num período."
         actions={
-          <Button variant="default" onClick={openNew}>
-            <Plus /> Nova meta
-          </Button>
+          <>
+            <RemindersToggle />
+            <Button variant="default" onClick={openNew}>
+              <Plus /> Nova meta
+            </Button>
+          </>
         }
       />
 

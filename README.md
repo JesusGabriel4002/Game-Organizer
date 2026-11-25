@@ -21,6 +21,14 @@ Licença [MIT](LICENSE) · [Code signing policy](#code-signing-policy) · [Priva
   - zerar um jogo em um ano (ex.: em 2026);
   - zerar N jogos em um ano ou período, opcionalmente de uma categoria (ex.: 5 indies em 2026), com ritmo necessário por mês.
 - Estatísticas: zerados por mês, por categoria, por plataforma, horas e notas.
+- Status extras: **Lista de desejos** e **Abandonado**, além de Jogando, Pra zerar e Zerado.
+- **Sessões de jogo** na página de cada jogo (data, duração e anotação); o tempo é somado às horas jogadas.
+- **O que jogar agora?**: sugere um jogo da lista "Pra zerar" levando em conta prazos, metas, nota da crítica e duração, com sorteio e filtros.
+- **Retrospectiva do ano**: zerados em ordem, horas, mês mais produtivo, favorito, categoria, gênero e plataforma do ano, metas cumpridas.
+- **Lembretes de metas** por notificação do Windows (no máximo um por dia), que podem ser desligados na tela de Metas.
+- Edição em massa na tabela: selecione vários jogos para mudar status, categorias e plataforma ou remover.
+- Botão **Atualizar biblioteca**: busca de novo no IGDB a nota, o tempo para zerar e as categorias automáticas de todos os jogos.
+- Capas salvas no computador, para aparecerem mesmo sem internet.
 - Exportar e importar a lista de jogos em CSV (Configurações). Só a coluna `nome` é obrigatória na importação; `status`, `ano`, `plataforma`, `nota` e `horas` são opcionais. Cada jogo importado é buscado no IGDB, cerca de 2 por segundo para respeitar o limite da API.
 - Conta opcional (Supabase): login por e-mail e senha e sincronização local-first (funciona offline; com internet sobe e desce as mudanças).
 - Backup e restauração em JSON (sem as chaves de API).
