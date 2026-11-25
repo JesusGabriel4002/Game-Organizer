@@ -96,6 +96,8 @@ Para soltar uma versão nova:
 
 3. Acompanhe a compilação na aba **Actions** do GitHub (leva uns 10 minutos). Com a assinatura ativa, aprove o pedido de assinatura no painel da SignPath quando ele aparecer; o workflow espera até 1 hora pela aprovação. Ao terminar, a release `v0.4.0` aparece em **Releases** com o instalador, e quem já tem o app recebe a atualização ao abrir.
 
+Se a release falhar no passo de publicar com erro 403 ("Resource not accessible by integration"), o token do Actions não teve permissão para criar a tag. Isso acontece quando o commit também altera arquivos em `.github/workflows`. Nesse caso, envie a tag à mão (`git tag v0.4.0 && git push origin v0.4.0`) e a release sai pelo mesmo workflow.
+
 Pushes na `main` sem mudar a versão só passam pela compilação de teste. Ainda dá para publicar enviando uma tag `v*` à mão, desde que ela bata com a versão dos arquivos. Para refazer uma release com problema, apague a release e a tag no GitHub (`gh release delete v0.4.0 --cleanup-tag`) e rode o workflow **Release** de novo pela aba Actions (botão *Run workflow*).
 
 ### Publicando manualmente (sem Actions)
